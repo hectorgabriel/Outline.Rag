@@ -1,7 +1,13 @@
 # Local dependencies of the .NET RAG services. Kept separate from docker-compose.yml (the Outline stack)
 # so the RAG index never lives in, or touches, Outline's own database.
 #
-#   docker compose -f docker-compose.rag.yml up -d
+#   docker compose -f docker-compose.rag.yml up -d      # pgvector only
+#   ollama pull bge-m3                                   # on the native Ollama app (https://ollama.com/download)
+#
+# Ollama runs natively by default: Docker on macOS has no GPU access, so the container is much slower
+# than the app (which uses Metal). Where the app isn't an option (Linux servers, CI), start the container
+# instead; it binds the same :11434, so don't run both:
+#   docker compose -f docker-compose.rag.yml --profile ollama up -d
 #   docker compose -f docker-compose.rag.yml exec ollama ollama pull bge-m3
 name: outline-rag
 
@@ -28,6 +34,7 @@ services:
 
   ollama:
     image: ollama/ollama:latest
+    profiles: [ollama]
     restart: unless-stopped
     ports:
       - "127.0.0.1:11434:11434"

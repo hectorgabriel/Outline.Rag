@@ -55,6 +55,7 @@ Package versions are managed centrally in `Directory.Packages.props`.
 
 - .NET SDK **10.0.401 recommended** (see [.NET SDK version](#net-sdk-version)). The minimum is 10.0.100, set in `global.json`
 - Docker
+- [Ollama](https://ollama.com/download), installed natively (see below for the container alternative)
 - A running Outline instance and an Outline API key
 - An Anthropic API key (or configure Ollama for chat as well, see [Configuration](#configuration))
 
@@ -78,12 +79,22 @@ Install it from https://dotnet.microsoft.com/download/dotnet/10.0 or with
 ### 1. Start the local dependencies
 
 ```bash
-docker compose -f docker-compose.rag.yml up -d                  # pgvector on :5433, Ollama on :11434
-docker compose -f docker-compose.rag.yml exec ollama ollama pull bge-m3
+docker compose -f docker-compose.rag.yml up -d                  # pgvector on :5433
+ollama pull bge-m3                                              # native Ollama on :11434
 ```
 
 `docker-compose.rag.yml` is separate from `docker-compose.yml` (the Outline
 stack), so the two can run side by side.
+
+Ollama runs natively because Docker on macOS has no GPU access: the app uses
+Metal, while the container is much slower. Where the app isn't an option
+(Linux servers, CI), the compose file has the container behind a profile. It
+binds the same port, so quit the app first:
+
+```bash
+docker compose -f docker-compose.rag.yml --profile ollama up -d
+docker compose -f docker-compose.rag.yml exec ollama ollama pull bge-m3
+```
 
 **No Outline instance at hand?** `docker/outline-demo/seed.sh --set-user-secrets`
 starts a disposable Outline 1.10.1 on :3000, fills it with the public 37signals

@@ -20,13 +20,16 @@ dotnet build                                   # whole solution; warnings are er
 dotnet test                                    # Microsoft.Testing.Platform runner (set in global.json)
 dotnet test --filter-class "*MarkdownHeadingChunkerTests"        # one test class (xunit.v3 filters, wildcards allowed)
 dotnet test --filter-method "*SkipsHeadingsWithoutBody"          # one test method
-docker compose -f docker-compose.rag.yml up -d                   # pgvector on :5433, Ollama on :11434
-docker compose -f docker-compose.rag.yml exec ollama ollama pull bge-m3
+docker compose -f docker-compose.rag.yml up -d                   # pgvector on :5433
+ollama pull bge-m3                                               # native Ollama app on :11434 (not the container)
+docker/outline-demo/seed.sh --set-user-secrets                   # disposable Outline on :3000 with sample docs
 dotnet run --project src/Outline.Rag.Worker                # periodic Outline → index sync
 dotnet run --project src/Outline.Rag.Api                   # http://localhost:5157, /openapi/v1.json in Development
 ```
 
 Configuration the scaffold leaves empty: `Outline:ApiToken`, `Outline:WebhookSigningSecret` and, for the Anthropic chat provider, `ANTHROPIC_API_KEY` (or `AI:Chat:ApiKey`). Keep them in user secrets or environment variables, never in `appsettings*.json`.
+
+Ollama runs as the native app, not in Docker: Docker on macOS has no GPU, and the app already holds :11434. The `ollama` service in `docker-compose.rag.yml` sits behind the opt-in `ollama` profile for machines without the app; never run both.
 
 Build quirks:
 - **Central package management:** versions live in `Directory.Packages.props`, and `PackageReference`s carry no version. Transitive pinning is on; `Microsoft.Bcl.Memory` is pinned for a security advisory.

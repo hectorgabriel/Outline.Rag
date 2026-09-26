@@ -152,7 +152,9 @@ has the same requests for Visual Studio / Rider / VS Code.
 [Open WebUI](https://github.com/open-webui/open-webui) gives the wiki a
 ChatGPT-style interface. It talks to the Api's OpenAI-compatible endpoints,
 where the wiki appears as a model named `outline-wiki`. Answers stream in and
-end with a **Sources** list linking to the Outline documents they cite.
+end with a **Sources** list linking to the Outline documents they cite. With
+`AI:Chat:Thinking` on, the model's reasoning appears above the answer as a
+collapsible "Thinking" block.
 
 ```bash
 docker compose -f docker-compose.rag.yml --profile ui up -d     # http://localhost:8080
@@ -198,7 +200,8 @@ variables (e.g. `AI__Chat__Model`) or user secrets.
 | `Outline:BaseUrl` | `http://localhost:3000/` | Also used to build citation links |
 | `Outline:ApiToken` | *(empty)* | Required |
 | `Outline:WebhookSigningSecret` | *(empty)* | Webhooks are rejected while empty |
-| `AI:Chat:Provider` | `Anthropic` | `Anthropic` or `Ollama` (then set `AI:Chat:Endpoint`). With Ollama, model reasoning ("thinking") is turned off |
+| `AI:Chat:Provider` | `Anthropic` | `Anthropic` or `Ollama` (then set `AI:Chat:Endpoint`) |
+| `AI:Chat:Thinking` | `false` | Ollama only: let thinking models reason before answering. The reasoning streams to Open WebUI as a collapsible "Thinking" block, but answers take several times longer (about 95 s instead of 15 s with qwen3.5 9B on an M-series Mac). Anthropic always uses adaptive thinking |
 | `AI:Chat:Timeout` | *(provider default)* | Time allowed for one answer, e.g. `00:05:00`. Ollama defaults to 5 minutes; Anthropic uses its SDK default |
 | `AI:Chat:Model` | `claude-opus-5` | |
 | `AI:Chat:ApiKey` | *(empty)* | Falls back to the `ANTHROPIC_API_KEY` environment variable |

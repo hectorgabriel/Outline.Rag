@@ -50,9 +50,13 @@ internal static class AiServiceCollectionExtensions
             Timeout = chat.Timeout ?? ChatModelOptions.DefaultOllamaTimeout,
         };
         IChatClient client = new OllamaApiClient(httpClient, chat.Model);
+        if (chat.Thinking)
+        {
+            return client;
+        }
 
         // Local thinking models (qwen3.5, deepseek-r1, ...) reason for minutes on CPU/Metal before answering.
-        // Answers are grounded in the retrieved excerpts, so turn reasoning off by default.
+        // Answers are grounded in the retrieved excerpts, so turn reasoning off unless AI:Chat:Thinking is set.
         return client.AsBuilder()
             .ConfigureOptions(options => options.Reasoning ??= new ReasoningOptions { Effort = ReasoningEffort.None })
             .Build();

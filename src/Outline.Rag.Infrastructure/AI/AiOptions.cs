@@ -47,6 +47,12 @@ public sealed class ChatModelOptions
     [Range(typeof(TimeSpan), "00:00:10", "01:00:00")]
     public TimeSpan? Timeout { get; set; }
 
+    /// <summary>
+    /// Ollama only: let thinking models (qwen3.5, deepseek-r1, ...) reason before answering. Off by default because
+    /// local reasoning takes minutes; when on, the reasoning streams to chat UIs. Anthropic always thinks adaptively.
+    /// </summary>
+    public bool Thinking { get; set; }
+
     /// <summary>Local models on CPU/Metal write ~20-30 tokens/s, so a long grounded answer needs minutes.</summary>
     public static readonly TimeSpan DefaultOllamaTimeout = TimeSpan.FromMinutes(5);
 }

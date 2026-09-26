@@ -64,8 +64,29 @@ public sealed class AnswerServiceTests
 
         var answer = await CreateService().AskStreamingAsync("How do I restore?", [], TestContext.Current.CancellationToken);
 
-        Assert.Equal(["Use pg_restore", " [1]."], await answer.Text.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(
+            [new AnswerPart(AnswerPartKind.Answer, "Use pg_restore"), new AnswerPart(AnswerPartKind.Answer, " [1].")],
+            await answer.Parts.ToListAsync(TestContext.Current.CancellationToken));
         Assert.Equal("Database", Assert.Single(answer.Citations).HeadingPath);
+    }
+
+    [Fact]
+    public async Task AskStreamingAsync_SeparatesReasoningFromAnswer()
+    {
+        _index.SearchAsync(Arg.Any<ReadOnlyMemory<float>>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([new RetrievedChunk(TestData.Chunk(0, "Restore with pg_restore.", "Database"), 0.9)]);
+        _chat.GetStreamingResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>())
+            .Returns(new ChatResponseUpdate[]
+            {
+                new(ChatRole.Assistant, [new TextReasoningContent("Excerpt 1 covers restores.")]),
+                new(null, [new TextReasoningContent(""), new TextContent("Use pg_restore [1].")]),
+            }.ToAsyncEnumerable());
+
+        var answer = await CreateService().AskStreamingAsync("How do I restore?", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(
+            [new AnswerPart(AnswerPartKind.Reasoning, "Excerpt 1 covers restores."), new AnswerPart(AnswerPartKind.Answer, "Use pg_restore [1].")],
+            await answer.Parts.ToListAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -76,7 +97,9 @@ public sealed class AnswerServiceTests
 
         var answer = await CreateService().AskStreamingAsync("¿Qué es esto?", [], TestContext.Current.CancellationToken);
 
-        Assert.Equal([AnswerService.NoResultsAnswer], await answer.Text.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(
+            [new AnswerPart(AnswerPartKind.Answer, AnswerService.NoResultsAnswer)],
+            await answer.Parts.ToListAsync(TestContext.Current.CancellationToken));
         Assert.Empty(answer.Citations);
         _chat.DidNotReceive().GetStreamingResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>());
     }

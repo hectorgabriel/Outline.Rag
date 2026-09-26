@@ -83,11 +83,18 @@ internal static partial class OpenAiChatEndpoints
 
         await Send(new ChoiceMessage("assistant", ""));
 
+        // Reasoning goes out as `reasoning_content`, which Open WebUI shows as a collapsible "Thinking" block.
         var text = new StringBuilder();
-        await foreach (var piece in answer.Text.WithCancellation(ct))
+        await foreach (var part in answer.Parts.WithCancellation(ct))
         {
-            text.Append(piece);
-            await Send(new ChoiceMessage(null, piece));
+            if (part.Kind == AnswerPartKind.Reasoning)
+            {
+                await Send(new ChoiceMessage(null, null, part.Text));
+                continue;
+            }
+
+            text.Append(part.Text);
+            await Send(new ChoiceMessage(null, part.Text));
         }
 
         var sources = FormatSources(text.ToString(), answer.Citations);
@@ -163,5 +170,6 @@ internal static partial class OpenAiChatEndpoints
         ChoiceMessage? Delta = null,
         [property: JsonPropertyName("finish_reason")] string? FinishReason = null);
 
-    private sealed record ChoiceMessage(string? Role, string? Content);
+    private sealed record ChoiceMessage(
+        string? Role, string? Content, [property: JsonPropertyName("reasoning_content")] string? ReasoningContent = null);
 }

@@ -51,22 +51,31 @@ public sealed class AnswerService(RetrievalService retrieval, IChatClient chatCl
         var retrieved = await retrieval.SearchAsync(question, collectionIds, top: null, cancellationToken).ConfigureAwait(false);
         if (retrieved.Count == 0)
         {
-            return new StreamingRagAnswer(new[] { NoResultsAnswer }.ToAsyncEnumerable(), []);
+            return new StreamingRagAnswer(new[] { new AnswerPart(AnswerPartKind.Answer, NoResultsAnswer) }.ToAsyncEnumerable(), []);
         }
 
-        return new StreamingRagAnswer(StreamText(BuildMessages(question, retrieved), cancellationToken), BuildCitations(retrieved));
+        return new StreamingRagAnswer(StreamParts(BuildMessages(question, retrieved), cancellationToken), BuildCitations(retrieved));
     }
 
-    private async IAsyncEnumerable<string> StreamText(
+    private async IAsyncEnumerable<AnswerPart> StreamParts(
         ChatMessage[] messages,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         await foreach (var update in chatClient.GetStreamingResponseAsync(messages, cancellationToken: cancellationToken)
                            .ConfigureAwait(false))
         {
-            if (!string.IsNullOrEmpty(update.Text))
+            foreach (var content in update.Contents)
             {
-                yield return update.Text;
+                var part = content switch
+                {
+                    TextReasoningContent { Text.Length: > 0 } reasoning => new AnswerPart(AnswerPartKind.Reasoning, reasoning.Text),
+                    TextContent { Text.Length: > 0 } text => new AnswerPart(AnswerPartKind.Answer, text.Text),
+                    _ => null,
+                };
+                if (part is not null)
+                {
+                    yield return part;
+                }
             }
         }
     }

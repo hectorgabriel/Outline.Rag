@@ -85,6 +85,16 @@ docker compose -f docker-compose.rag.yml exec ollama ollama pull bge-m3
 `docker-compose.rag.yml` is separate from `docker-compose.yml` (the Outline
 stack), so the two can run side by side.
 
+**No Outline instance at hand?** `docker/outline-demo/seed.sh --set-user-secrets`
+starts a disposable Outline 1.10.1 on :3000, fills it with the public 37signals
+employee handbook (16 documents), creates an API key and a webhook
+subscription to the Api, and stores both secrets for step 2 (you still set
+`AI:Chat:ApiKey`). Sign in to the web UI with `admin@example.com`; the magic
+link arrives in Mailpit at http://localhost:8025. Add more Markdown repos to
+`SOURCES` in the script. Remove everything with
+`docker compose -f docker/outline-demo/docker-compose.yml down -v` and delete
+`docker/outline-demo/.env.rag`.
+
 ### 2. Configure secrets
 
 Create an Outline API key under **Settings → API** with a dedicated account.

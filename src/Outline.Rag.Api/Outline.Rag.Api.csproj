@@ -9,4 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Outline.Rag.UnitTests" />
+  </ItemGroup>
 </Project>

@@ -25,6 +25,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapHealthChecks("/health");
 app.MapRagEndpoints();
+app.MapOpenAiChat();
 app.MapOutlineWebhook();
 
 await app.RunAsync();

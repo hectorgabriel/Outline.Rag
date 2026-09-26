@@ -117,7 +117,7 @@ commands configures both:
 ```bash
 dotnet user-secrets --project src/Outline.Rag.Worker set "Outline:ApiToken" "<outline api key>"
 dotnet user-secrets --project src/Outline.Rag.Worker set "AI:Chat:ApiKey" "<anthropic api key>"
-dotnet user-secrets --project src/Outline.Rag.Worker set "Outline:WebhookSigningSecret" "<webhook secret>"   # optional, see step 5
+dotnet user-secrets --project src/Outline.Rag.Worker set "Outline:WebhookSigningSecret" "<webhook secret>"   # optional, see step 6
 ```
 
 `appsettings.json` defaults to an Outline instance at `http://localhost:3000/`.
@@ -147,7 +147,24 @@ Both endpoints accept an optional `collectionIds` array to restrict results
 to specific Outline collections. `src/Outline.Rag.Api/Outline.Rag.Api.http`
 has the same requests for Visual Studio / Rider / VS Code.
 
-### 5. (Optional) Real-time updates through webhooks
+### 5. (Optional) Chat UI with Open WebUI
+
+[Open WebUI](https://github.com/open-webui/open-webui) gives the wiki a
+ChatGPT-style interface. It talks to the Api's OpenAI-compatible endpoints,
+where the wiki appears as a model named `outline-wiki`. Answers stream in and
+end with a **Sources** list linking to the Outline documents they cite.
+
+```bash
+docker compose -f docker-compose.rag.yml --profile ui up -d     # http://localhost:8080
+```
+
+The Api must be running on :5157. The UI has no login and only listens on
+localhost, and it only offers the RAG model. Each message is answered on its
+own, so write follow-up questions in full ("What about dental insurance?"
+won't carry over the previous topic). Settings are in the `open-webui` service
+in `docker-compose.rag.yml`.
+
+### 6. (Optional) Real-time updates through webhooks
 
 In Outline, under **Settings → Webhooks**, create a subscription to the document events that points at
 `<api base url>/webhooks/outline`, and store its signing secret as
@@ -165,6 +182,8 @@ endpoint doesn't report them.
 | --- | --- | --- |
 | `POST /api/ask` | `{ "question": string, "collectionIds"?: guid[] }` | `{ answer, citations: [{ number, documentId, title, headingPath, url, score }] }` |
 | `POST /api/search` | `{ "query": string, "top"?: int, "collectionIds"?: guid[] }` | Matching chunks with similarity scores |
+| `GET /v1/models` | | The single model `outline-wiki` (OpenAI format) |
+| `POST /v1/chat/completions` | OpenAI Chat Completions request; `stream` supported | The answer to the last user message, with a Markdown **Sources** list (JSON or server-sent events) |
 | `POST /webhooks/outline` | Outline webhook delivery | `202 Accepted` / `401` if the signature is invalid |
 | `GET /health` | | `Healthy` |
 

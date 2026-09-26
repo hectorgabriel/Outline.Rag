@@ -6,6 +6,7 @@
     <NoWarn>$(NoWarn);CA1707</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Outline.Rag.Api\Outline.Rag.Api.csproj" />
     <ProjectReference Include="..\..\src\Outline.Rag.Infrastructure\Outline.Rag.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>

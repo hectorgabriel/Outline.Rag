@@ -20,7 +20,7 @@ dotnet build                                   # whole solution; warnings are er
 dotnet test                                    # Microsoft.Testing.Platform runner (set in global.json)
 dotnet test --filter-class "*MarkdownHeadingChunkerTests"        # one test class (xunit.v3 filters, wildcards allowed)
 dotnet test --filter-method "*SkipsHeadingsWithoutBody"          # one test method
-docker compose -f docker-compose.rag.yml up -d                   # pgvector on :5433
+docker compose -f docker-compose.rag.yml up -d                   # pgvector on :5433 (add --profile ui for Open WebUI on :8080)
 ollama pull bge-m3                                               # native Ollama app on :11434 (not the container)
 docker/outline-demo/seed.sh --set-user-secrets                   # disposable Outline on :3000 with sample docs
 dotnet run --project src/Outline.Rag.Worker                # periodic Outline → index sync
@@ -54,7 +54,7 @@ Clean-architecture layers. The dependency direction is Api/Worker → Infrastruc
   - `AI/`: provider switch. Chat is Anthropic (`claude-opus-5` by default) or Ollama; embeddings are Ollama (`bge-m3`, 1024 dimensions, multilingual).
   - `DependencyInjection.AddRagInfrastructure` wires everything, including `AddApplication()`.
 - **Worker:** `OutlineSyncWorker` initializes the RAG tables, then runs `SyncChangedAsync` on a `PeriodicTimer`. Its first run indexes everything.
-- **Api:** minimal APIs `POST /api/search`, `POST /api/ask` and `POST /webhooks/outline`. The webhook verifies the `Outline-Signature` header, pushes the document id onto `ReindexChannel` and returns 202; `ReindexBackgroundService` drains the channel.
+- **Api:** minimal APIs `POST /api/search`, `POST /api/ask` and `POST /webhooks/outline`, plus an OpenAI-compatible `/v1/models` and `/v1/chat/completions` (`OpenAiChatEndpoints`, streaming via `AnswerService.AskStreamingAsync`) for Open WebUI (compose profile `ui`, :8080). It answers only the last user message. The webhook verifies the `Outline-Signature` header, pushes the document id onto `ReindexChannel` and returns 202; `ReindexBackgroundService` drains the channel.
 
 Design constraints to keep:
 - **Read Outline through its API, never its database.** The RAG index lives in its own database (`outline_rag`), separate from Outline's.

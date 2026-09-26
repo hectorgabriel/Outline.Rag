@@ -9,6 +9,10 @@
 # instead; it binds the same :11434, so don't run both:
 #   docker compose -f docker-compose.rag.yml --profile ollama up -d
 #   docker compose -f docker-compose.rag.yml exec ollama ollama pull bge-m3
+#
+# Chat UI: Open WebUI on http://localhost:8080 (profile `ui`), talking to the Api's OpenAI-compatible /v1
+# endpoints, so the Api must be running on :5157. It offers one model, `outline-wiki`:
+#   docker compose -f docker-compose.rag.yml --profile ui up -d
 name: outline-rag
 
 services:
@@ -41,6 +45,38 @@ services:
     volumes:
       - ollama_models:/root/.ollama
 
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:v0.11.4
+    profiles: [ui]
+    restart: unless-stopped
+    environment:
+      # Local, single-user setup: no login. Anyone who can reach :8080 can ask the wiki (and so can anyone who can
+      # reach the Api, see the access-control note in README.md). Some of these settings are only read on first
+      # start and then kept in the open_webui_data volume; change them in Admin Settings, or remove the volume.
+      WEBUI_AUTH: "False"
+      WEBUI_NAME: Outline RAG
+      OPENAI_API_BASE_URL: http://host.docker.internal:5157/v1
+      OPENAI_API_KEY: unused   # the Api doesn't check it yet
+      DEFAULT_MODELS: outline-wiki
+      # Only the RAG model: hide Ollama's raw models and the arena, and don't download Open WebUI's own RAG models.
+      ENABLE_OLLAMA_API: "False"
+      ENABLE_EVALUATION_ARENA_MODELS: "False"
+      OFFLINE_MODE: "True"
+      # These background tasks would send extra prompts to the only model, i.e. through the RAG pipeline.
+      ENABLE_TITLE_GENERATION: "False"
+      ENABLE_TAGS_GENERATION: "False"
+      ENABLE_FOLLOW_UP_GENERATION: "False"
+      ENABLE_AUTOCOMPLETE_GENERATION: "False"
+      ENABLE_RETRIEVAL_QUERY_GENERATION: "False"
+      ENABLE_SEARCH_QUERY_GENERATION: "False"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - open_webui_data:/app/backend/data
+
 volumes:
   rag_db_data:
   ollama_models:
+  open_webui_data:

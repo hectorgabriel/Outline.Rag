@@ -1,0 +1,12 @@
+<Project>
+  <!--
+    OllamaSharp's tool-calling source generator targets a newer Roslyn than SDK 10.0.100 ships (CS9057) and flows
+    to every project that references Infrastructure. It is unused here; delete this target after moving to an SDK
+    whose compiler is 5.6+.
+  -->
+  <Target Name="RemoveOllamaSharpSourceGenerator" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'OllamaSharp.SourceGenerators'" />
+    </ItemGroup>
+  </Target>
+</Project>

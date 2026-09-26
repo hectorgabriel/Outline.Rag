@@ -1,0 +1,11 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+TestResults/
+.DS_Store
+
+# Local Outline stack (see README.md)
+.env
+*.backup

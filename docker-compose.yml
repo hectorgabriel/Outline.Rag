@@ -1,0 +1,51 @@
+name: outline
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: outline
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-outline_dev_pw}
+      POSTGRES_DB: outline_dev
+    volumes:
+      # NOTE: Postgres 18+ expects the volume to be mounted at
+      # /var/lib/postgresql (not /var/lib/postgresql/data).
+      - postgres_data:/var/lib/postgresql
+      # The backup file is mounted read-only so `pg_restore` can read it
+      # from inside the postgres container (see scripts/restore.sh). Which
+      # dump is mounted is chosen with OUTLINE_BACKUP (set by restore.sh);
+      # it always appears as /backup/outline.backup inside the container.
+      - ${OUTLINE_BACKUP:-./outline.backup}:/backup/outline.backup:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U outline -d outline_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  outline:
+    image: outlinewiki/outline:1.10.0
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - outline_data:/var/lib/outline/data
+
+volumes:
+  postgres_data:
+  outline_data:

@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <!-- Shared with the Worker so both read the same local secrets (Outline token, API keys). -->
+    <UserSecretsId>dotnet-Outline.Rag.Worker-2e89f020-4959-4aa4-8946-fc55693ec703</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Outline.Rag.Infrastructure\Outline.Rag.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+  </ItemGroup>
+</Project>

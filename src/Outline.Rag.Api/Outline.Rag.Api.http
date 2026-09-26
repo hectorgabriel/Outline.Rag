@@ -1,0 +1,13 @@
+@host = http://localhost:5157
+
+POST {{host}}/api/search
+Content-Type: application/json
+
+{ "query": "¿Cómo restauro un respaldo de la base de datos?", "top": 5 }
+
+###
+
+POST {{host}}/api/ask
+Content-Type: application/json
+
+{ "question": "¿Cómo restauro un respaldo de la base de datos?" }

@@ -1,0 +1,12 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <!-- Microsoft.Extensions.VectorData / MEAI surface some members as experimental. -->
+    <NoWarn>$(NoWarn);MEAI001;MEVD9000</NoWarn>
+  </PropertyGroup>
+</Project>

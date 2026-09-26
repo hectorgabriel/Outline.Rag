@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Outline.Rag.Domain\Outline.Rag.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Abstractions only: concrete providers live in Infrastructure. -->
+    <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Outline.Rag.UnitTests" />
+  </ItemGroup>
+</Project>

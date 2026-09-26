@@ -55,6 +55,33 @@ public sealed class AnswerServiceTests
     }
 
     [Fact]
+    public async Task AskStreamingAsync_StreamsModelTextWithCitations()
+    {
+        _index.SearchAsync(Arg.Any<ReadOnlyMemory<float>>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([new RetrievedChunk(TestData.Chunk(0, "Restore with pg_restore.", "Database"), 0.9)]);
+        _chat.GetStreamingResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>())
+            .Returns(new ChatResponseUpdate[] { new(ChatRole.Assistant, "Use pg_restore"), new(null, " [1].") }.ToAsyncEnumerable());
+
+        var answer = await CreateService().AskStreamingAsync("How do I restore?", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal(["Use pg_restore", " [1]."], await answer.Text.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Equal("Database", Assert.Single(answer.Citations).HeadingPath);
+    }
+
+    [Fact]
+    public async Task AskStreamingAsync_WithoutRelevantChunks_DoesNotCallModel()
+    {
+        _index.SearchAsync(Arg.Any<ReadOnlyMemory<float>>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([new RetrievedChunk(TestData.Chunk(0, "irrelevant"), 0.1)]);
+
+        var answer = await CreateService().AskStreamingAsync("¿Qué es esto?", [], TestContext.Current.CancellationToken);
+
+        Assert.Equal([AnswerService.NoResultsAnswer], await answer.Text.ToListAsync(TestContext.Current.CancellationToken));
+        Assert.Empty(answer.Citations);
+        _chat.DidNotReceive().GetStreamingResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public void BuildUserPrompt_WrapsExcerptsAsNumberedData()
     {
         var prompt = AnswerService.BuildUserPrompt("Q?", [new RetrievedChunk(TestData.Chunk(0, "Body", "Sec"), 0.9)]);

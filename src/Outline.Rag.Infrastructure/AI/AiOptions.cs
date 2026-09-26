@@ -39,6 +39,16 @@ public sealed class ChatModelOptions
 
     [Range(256, 128_000)]
     public int MaxOutputTokens { get; set; } = 16_000;
+
+    /// <summary>
+    /// Time allowed for one chat call. Unset means the provider default: the Anthropic SDK's own, and
+    /// <see cref="DefaultOllamaTimeout"/> for Ollama, whose HttpClient would otherwise give up after 100 s.
+    /// </summary>
+    [Range(typeof(TimeSpan), "00:00:10", "01:00:00")]
+    public TimeSpan? Timeout { get; set; }
+
+    /// <summary>Local models on CPU/Metal write ~20-30 tokens/s, so a long grounded answer needs minutes.</summary>
+    public static readonly TimeSpan DefaultOllamaTimeout = TimeSpan.FromMinutes(5);
 }
 
 public sealed class EmbeddingModelOptions

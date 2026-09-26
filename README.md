@@ -158,7 +158,8 @@ variables (e.g. `AI__Chat__Model`) or user secrets.
 | `Outline:BaseUrl` | `http://localhost:3000/` | Also used to build citation links |
 | `Outline:ApiToken` | *(empty)* | Required |
 | `Outline:WebhookSigningSecret` | *(empty)* | Webhooks are rejected while empty |
-| `AI:Chat:Provider` | `Anthropic` | `Anthropic` or `Ollama` (then set `AI:Chat:Endpoint`) |
+| `AI:Chat:Provider` | `Anthropic` | `Anthropic` or `Ollama` (then set `AI:Chat:Endpoint`). With Ollama, model reasoning ("thinking") is turned off |
+| `AI:Chat:Timeout` | *(provider default)* | Time allowed for one answer, e.g. `00:05:00`. Ollama defaults to 5 minutes; Anthropic uses its SDK default |
 | `AI:Chat:Model` | `claude-opus-5` | |
 | `AI:Chat:ApiKey` | *(empty)* | Falls back to the `ANTHROPIC_API_KEY` environment variable |
 | `AI:Embeddings:Model` / `Endpoint` | `bge-m3` / `http://localhost:11434` | Ollama |

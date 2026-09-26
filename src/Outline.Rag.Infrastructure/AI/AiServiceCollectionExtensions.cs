@@ -20,9 +20,7 @@ internal static class AiServiceCollectionExtensions
                 return chat.Provider switch
                 {
                     ChatProvider.Anthropic => CreateAnthropic(chat),
-                    ChatProvider.Ollama => new OllamaApiClient(
-                        chat.Endpoint ?? throw new InvalidOperationException("AI:Chat:Endpoint is required for Ollama."),
-                        chat.Model),
+                    ChatProvider.Ollama => CreateOllama(chat),
                     _ => throw new InvalidOperationException($"Unsupported chat provider '{chat.Provider}'."),
                 };
             })
@@ -44,12 +42,32 @@ internal static class AiServiceCollectionExtensions
         return services;
     }
 
+    private static IChatClient CreateOllama(ChatModelOptions chat)
+    {
+        var httpClient = new HttpClient
+        {
+            BaseAddress = chat.Endpoint ?? throw new InvalidOperationException("AI:Chat:Endpoint is required for Ollama."),
+            Timeout = chat.Timeout ?? ChatModelOptions.DefaultOllamaTimeout,
+        };
+        IChatClient client = new OllamaApiClient(httpClient, chat.Model);
+
+        // Local thinking models (qwen3.5, deepseek-r1, ...) reason for minutes on CPU/Metal before answering.
+        // Answers are grounded in the retrieved excerpts, so turn reasoning off by default.
+        return client.AsBuilder()
+            .ConfigureOptions(options => options.Reasoning ??= new ReasoningOptions { Effort = ReasoningEffort.None })
+            .Build();
+    }
+
     private static IChatClient CreateAnthropic(ChatModelOptions chat)
     {
         // Without an explicit key the SDK resolves ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL, etc. from the environment.
-        var client = string.IsNullOrEmpty(chat.ApiKey)
+        IAnthropicClient client = string.IsNullOrEmpty(chat.ApiKey)
             ? new AnthropicClient()
             : new AnthropicClient { ApiKey = chat.ApiKey };
+        if (chat.Timeout is { } timeout)
+        {
+            client = client.WithOptions(o => o with { Timeout = timeout });
+        }
 
         return client.AsIChatClient(chat.Model, chat.MaxOutputTokens, AnthropicThinkingMode.Adaptive);
     }

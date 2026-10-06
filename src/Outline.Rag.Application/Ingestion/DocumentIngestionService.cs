@@ -13,6 +13,7 @@ public sealed partial class DocumentIngestionService(
     IDocumentChunker chunker,
     IEmbeddingGenerator<string, Embedding<float>> embeddingGenerator,
     IChunkIndex index,
+    IIndexedDocumentStore ingested,
     IOptions<RagOptions> options,
     ILogger<DocumentIngestionService> logger)
 {
@@ -22,6 +23,7 @@ public sealed partial class DocumentIngestionService(
         if (chunks.Count == 0)
         {
             await index.DeleteDocumentAsync(document.Id, cancellationToken).ConfigureAwait(false);
+            await ingested.SetAsync(document.Id, document.UpdatedAt, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -36,11 +38,15 @@ public sealed partial class DocumentIngestionService(
         }
 
         await index.ReplaceDocumentAsync(document.Id, embedded, cancellationToken).ConfigureAwait(false);
+        await ingested.SetAsync(document.Id, document.UpdatedAt, cancellationToken).ConfigureAwait(false);
         LogIndexed(logger, document.Id, document.Title, chunks.Count);
     }
 
-    public Task RemoveAsync(Guid documentId, CancellationToken cancellationToken) =>
-        index.DeleteDocumentAsync(documentId, cancellationToken);
+    public async Task RemoveAsync(Guid documentId, CancellationToken cancellationToken)
+    {
+        await index.DeleteDocumentAsync(documentId, cancellationToken).ConfigureAwait(false);
+        await ingested.RemoveAsync(documentId, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>
     /// Title and heading path are prepended so chunks keep their context once separated from the document.

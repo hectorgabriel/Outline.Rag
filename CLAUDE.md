@@ -41,25 +41,25 @@ Build quirks:
 Clean-architecture layers. The dependency direction is Api/Worker → Infrastructure → Application → Domain.
 
 - **Domain:** records only (`SourceDocument`, `DocumentChunk`, `RetrievedChunk`, `RagAnswer`/`Citation`). Chunk keys are deterministic (`ChunkId.For(documentId, index)`), so re-indexing a document overwrites its chunks in place. `PgVectorChunkIndex.ReplaceDocumentAsync` upserts first and then deletes leftover indexes.
-- **Application:** ports in `Abstractions/` (`IOutlineDocumentSource`, `IDocumentChunker`, `IChunkIndex`, `ISyncCheckpointStore`) plus the use cases:
+- **Application:** ports in `Abstractions/` (`IOutlineDocumentSource`, `IDocumentChunker`, `IChunkIndex`, `ISyncCheckpointStore`, `IIndexedDocumentStore`) plus the use cases:
   - `DocumentIngestionService`: chunk → embed → index.
-  - `OutlineSyncService`: incremental sync from the checkpoint, and single-document resync.
+  - `OutlineSyncService`: incremental sync from the checkpoint, then reconciliation against the collections' document trees (adds documents the listing skipped, removes deleted ones), plus single-document resync.
   - `RetrievalService` and `AnswerService`: grounded answers with `[n]` citations.
 
   AI access goes only through the `Microsoft.Extensions.AI` abstractions (`IChatClient`, `IEmbeddingGenerator`).
 - **Infrastructure:** the adapters.
-  - `Outline/`: typed `HttpClient` over Outline's RPC-style API (`POST /api/documents.list`, `documents.info`), plus the webhook HMAC check.
+  - `Outline/`: typed `HttpClient` over Outline's RPC-style API (`POST /api/documents.list`, `documents.info`, `collections.list`, `collections.documents`), plus the webhook HMAC check.
   - `Chunking/`: Markdown heading → paragraph → token splitting, using `Microsoft.ML.Tokenizers` with cl100k as an approximation.
   - `VectorStore/`: pgvector through `Microsoft.Extensions.VectorData` and `CommunityToolkit.VectorData.PgVector`. The schema is defined in code (`ChunkRecordDefinition`), so the vector dimension comes from `AI:Embeddings:Dimensions`.
-  - `AI/`: provider switch. Chat is Anthropic (`claude-opus-5` by default) or Ollama; embeddings are Ollama (`bge-m3`, 1024 dimensions, multilingual).
+  - `AI/`: provider switch. Chat is Anthropic (`claude-opus-5` by default) or Ollama; embeddings are Ollama (`bge-m3`, 1024 dimensions, multilingual). For an Ollama behind a Bearer auth gate (the DevStudio AI server, see `docs/devstudio-ai-server.md`), set `AI:Embeddings:ApiKey` / `AI:Chat:ApiKey`.
   - `DependencyInjection.AddRagInfrastructure` wires everything, including `AddApplication()`.
 - **Worker:** `OutlineSyncWorker` initializes the RAG tables, then runs `SyncChangedAsync` on a `PeriodicTimer`. Its first run indexes everything.
 - **Api:** minimal APIs `POST /api/search`, `POST /api/ask` and `POST /webhooks/outline`, plus an OpenAI-compatible `/v1/models` and `/v1/chat/completions` (`OpenAiChatEndpoints`, streaming via `AnswerService.AskStreamingAsync`) for Open WebUI (compose profile `ui`, :8080). It answers only the last user message. The webhook verifies the `Outline-Signature` header, pushes the document id onto `ReindexChannel` and returns 202; `ReindexBackgroundService` drains the channel.
 
 Design constraints to keep:
 - **Read Outline through its API, never its database.** The RAG index lives in its own database (`outline_rag`), separate from Outline's.
-- **Deletions only arrive via webhooks.** The list endpoint doesn't show them, so without the webhook, deleted or archived documents stay in the index until someone resyncs them.
-- **Changing the embedding model or dimension requires a new `VectorStore:CollectionName`** (a new table) and a full re-sync. To trigger one, clear `rag_sync_state`.
+- **Outline's document list is not a reliable enumeration.** It pages by offset over `updatedAt`, which bulk updates (the 1.10 upgrade) left identical on many documents, so pages repeat or skip rows. Each sync therefore reconciles against `collections.documents` using the `rag_documents` ledger (document id → ingested `updatedAt`). That same step removes deleted or archived documents; webhooks just make it immediate.
+- **Changing the embedding model or dimension requires a new `VectorStore:CollectionName`** (a new table) and a full re-sync. To trigger one, clear `rag_sync_state` (keep `rag_documents` consistent with the table, or clear both).
 - **Access control is not implemented yet.** Everything visible to the Outline API token is searchable by any caller. The `CollectionIds` filter is the hook for per-user permissions; see the TODO in `RagEndpoints.cs`.
 - **Retrieved text is untrusted data.** The system prompt in `AnswerService` wraps excerpts as data; keep it that way when changing prompts.
 

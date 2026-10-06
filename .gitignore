@@ -9,3 +9,6 @@ TestResults/
 # Local Outline stack (see README.md)
 .env
 *.backup
+
+# Local credentials (e.g. the DevStudio AI server key)
+artifacts/

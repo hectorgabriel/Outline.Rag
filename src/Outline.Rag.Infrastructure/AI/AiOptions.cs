@@ -34,7 +34,10 @@ public sealed class ChatModelOptions
     /// <summary>Ollama endpoint. Ignored for Anthropic (use ANTHROPIC_BASE_URL to override its base URL).</summary>
     public Uri? Endpoint { get; set; }
 
-    /// <summary>Anthropic API key. When empty the SDK falls back to ANTHROPIC_API_KEY / `ant auth login`.</summary>
+    /// <summary>
+    /// Anthropic: the API key; when empty the SDK falls back to ANTHROPIC_API_KEY / `ant auth login`.
+    /// Ollama: optional Bearer token for an endpoint behind an auth gate.
+    /// </summary>
     public string? ApiKey { get; set; }
 
     [Range(256, 128_000)]
@@ -66,6 +69,9 @@ public sealed class EmbeddingModelOptions
     public string Model { get; set; } = "bge-m3";
 
     public Uri Endpoint { get; set; } = new("http://localhost:11434");
+
+    /// <summary>Optional Bearer token for an Ollama endpoint behind an auth gate (e.g. the DevStudio AI server).</summary>
+    public string? ApiKey { get; set; }
 
     /// <summary>Must match the model's output size (bge-m3: 1024). Fixed per vector table.</summary>
     [Range(1, 16_000)]

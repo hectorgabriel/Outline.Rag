@@ -32,7 +32,8 @@ internal static class AiServiceCollectionExtensions
                 var embeddings = sp.GetRequiredService<IOptions<AiOptions>>().Value.Embeddings;
                 return embeddings.Provider switch
                 {
-                    EmbeddingProvider.Ollama => new OllamaApiClient(embeddings.Endpoint, embeddings.Model),
+                    EmbeddingProvider.Ollama => new OllamaApiClient(
+                        CreateOllamaHttpClient(embeddings.Endpoint, embeddings.ApiKey), embeddings.Model),
                     _ => throw new InvalidOperationException($"Unsupported embedding provider '{embeddings.Provider}'."),
                 };
             })
@@ -44,11 +45,10 @@ internal static class AiServiceCollectionExtensions
 
     private static IChatClient CreateOllama(ChatModelOptions chat)
     {
-        var httpClient = new HttpClient
-        {
-            BaseAddress = chat.Endpoint ?? throw new InvalidOperationException("AI:Chat:Endpoint is required for Ollama."),
-            Timeout = chat.Timeout ?? ChatModelOptions.DefaultOllamaTimeout,
-        };
+        var httpClient = CreateOllamaHttpClient(
+            chat.Endpoint ?? throw new InvalidOperationException("AI:Chat:Endpoint is required for Ollama."),
+            chat.ApiKey);
+        httpClient.Timeout = chat.Timeout ?? ChatModelOptions.DefaultOllamaTimeout;
         IChatClient client = new OllamaApiClient(httpClient, chat.Model);
         if (chat.Thinking)
         {
@@ -60,6 +60,17 @@ internal static class AiServiceCollectionExtensions
         return client.AsBuilder()
             .ConfigureOptions(options => options.Reasoning ??= new ReasoningOptions { Effort = ReasoningEffort.None })
             .Build();
+    }
+
+    private static HttpClient CreateOllamaHttpClient(Uri endpoint, string? apiKey)
+    {
+        var httpClient = new HttpClient { BaseAddress = endpoint };
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            httpClient.DefaultRequestHeaders.Authorization = new("Bearer", apiKey);
+        }
+
+        return httpClient;
     }
 
     private static IChatClient CreateAnthropic(ChatModelOptions chat)

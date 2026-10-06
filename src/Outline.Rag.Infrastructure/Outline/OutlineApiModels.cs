@@ -13,7 +13,22 @@ internal sealed record OutlineListRequest(
 
 internal sealed record OutlineInfoRequest([property: JsonPropertyName("id")] Guid Id);
 
-internal sealed record OutlineResponse<T>([property: JsonPropertyName("data")] T Data);
+internal sealed record OutlinePageRequest(
+    [property: JsonPropertyName("offset")] int Offset,
+    [property: JsonPropertyName("limit")] int Limit);
+
+internal sealed record OutlineResponse<T>(
+    [property: JsonPropertyName("data")] T Data,
+    [property: JsonPropertyName("pagination")] OutlinePagination? Pagination = null);
+
+internal sealed record OutlinePagination([property: JsonPropertyName("total")] int? Total);
+
+internal sealed record OutlineCollectionDto([property: JsonPropertyName("id")] Guid Id);
+
+/// <summary>A node of <c>collections.documents</c>: the collection's tree of published documents.</summary>
+internal sealed record OutlineNavigationNode(
+    [property: JsonPropertyName("id")] Guid Id,
+    [property: JsonPropertyName("children")] IReadOnlyList<OutlineNavigationNode>? Children);
 
 internal sealed record OutlineDocumentDto(
     [property: JsonPropertyName("id")] Guid Id,

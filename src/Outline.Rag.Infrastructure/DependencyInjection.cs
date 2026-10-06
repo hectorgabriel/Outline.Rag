@@ -62,8 +62,12 @@ public static class DependencyInjection
         services.AddSingleton<IChunkIndex, PgVectorChunkIndex>();
         services.AddSingleton<NpgsqlSyncCheckpointStore>();
         services.AddSingleton<ISyncCheckpointStore>(sp => sp.GetRequiredService<NpgsqlSyncCheckpointStore>());
+        services.AddSingleton<NpgsqlIndexedDocumentStore>();
+        services.AddSingleton<IIndexedDocumentStore>(sp => sp.GetRequiredService<NpgsqlIndexedDocumentStore>());
         services.AddSingleton(sp => new RagDatabaseInitializer(
-            sp.GetRequiredService<IChunkIndex>(), sp.GetRequiredService<NpgsqlSyncCheckpointStore>()));
+            sp.GetRequiredService<IChunkIndex>(),
+            sp.GetRequiredService<NpgsqlSyncCheckpointStore>(),
+            sp.GetRequiredService<NpgsqlIndexedDocumentStore>()));
 
         services.AddAiProviders();
         return services;

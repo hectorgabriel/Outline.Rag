@@ -27,7 +27,7 @@ dotnet run --project src/Outline.Rag.Worker                # periodic Outline �
 dotnet run --project src/Outline.Rag.Api                   # http://localhost:5157, /openapi/v1.json in Development
 ```
 
-Configuration the scaffold leaves empty: `Outline:ApiToken`, `Outline:WebhookSigningSecret` and, for the Anthropic chat provider, `ANTHROPIC_API_KEY` (or `AI:Chat:ApiKey`). Keep them in user secrets or environment variables, never in `appsettings*.json`.
+Configuration the scaffold leaves empty: `Outline:ApiToken` (an **admin** account's key, because Outline only shows user emails to admins), `Outline:WebhookSigningSecret`, the caller authentication (`Auth:Oidc:Authority`/`Audience` and/or `Auth:Gateway:ApiKey`) and, for the Anthropic chat provider, `ANTHROPIC_API_KEY` (or `AI:Chat:ApiKey`). Keep them in user secrets or environment variables, never in `appsettings*.json`. With no `Auth` configured, every search and chat request gets 401.
 
 Ollama runs as the native app, not in Docker: Docker on macOS has no GPU, and the app already holds :11434. The `ollama` service in `docker-compose.rag.yml` sits behind the opt-in `ollama` profile for machines without the app; never run both.
 
@@ -55,12 +55,14 @@ Clean-architecture layers. The dependency direction is Api/Worker → Infrastruc
   - `DependencyInjection.AddRagInfrastructure` wires everything, including `AddApplication()`.
 - **Worker:** `OutlineSyncWorker` initializes the RAG tables, then runs `SyncChangedAsync` on a `PeriodicTimer`. Its first run indexes everything.
 - **Api:** minimal APIs `POST /api/search`, `POST /api/ask` and `POST /webhooks/outline`, plus an OpenAI-compatible `/v1/models` and `/v1/chat/completions` (`OpenAiChatEndpoints`, streaming via `AnswerService.AskStreamingAsync`) for Open WebUI (compose profile `ui`, :8080). It answers only the last user message. The webhook verifies the `Outline-Signature` header, pushes the document id onto `ReindexChannel` and returns 202; `ReindexBackgroundService` drains the channel.
+  - `Security/`: every endpoint requires a caller with an email unless it opts out with `AllowAnonymous` (only `/health`, the webhook and dev OpenAPI do). Callers authenticate with an OIDC JWT, or through a trusted gateway (Open WebUI: `Authorization: Bearer <Auth:Gateway:ApiKey>` plus `X-OpenWebUI-User-Email`). `CallerCollections` maps the email to the collections that user can read in Outline (`OutlineCollectionAccessResolver`, rules in `CollectionAccessRules`, cached for `Outline:AccessCacheDuration`). Requests are validated per endpoint (`ValidateRequest<T>`, limits in `RequestLimits`) and rate-limited per caller (`RateLimits`).
 
 Design constraints to keep:
 - **Read Outline through its API, never its database.** The RAG index lives in its own database (`outline_rag`), separate from Outline's.
 - **Outline's document list is not a reliable enumeration.** It pages by offset over `updatedAt`, which bulk updates (the 1.10 upgrade) left identical on many documents, so pages repeat or skip rows. Each sync therefore reconciles against `collections.documents` using the `rag_documents` ledger (document id → ingested `updatedAt`). That same step removes deleted or archived documents; webhooks just make it immediate.
 - **Changing the embedding model or dimension requires a new `VectorStore:CollectionName`** (a new table) and a full re-sync. To trigger one, clear `rag_sync_state` (keep `rag_documents` consistent with the table, or clear both).
-- **Access control is not implemented yet.** Everything visible to the Outline API token is searchable by any caller. The `CollectionIds` filter is the hook for per-user permissions; see the TODO in `RagEndpoints.cs`.
+- **Search is scoped to what the caller can read in Outline, and fails closed.** An empty collection list means "no access", never "no filter": `RetrievalService` and `PgVectorChunkIndex` both return nothing for it. Keep that when adding callers. Permissions are modelled per collection (default permission for non-guests, direct and group memberships); documents shared individually inside a private collection are not, so they stay hidden from people who only have the share.
+- **Don't use `AddValidation()`.** Its generated validator walks every reachable type and throws on the `JsonElement` in `ChatCompletionMessage`, which breaks every chat request. Add `ValidateRequest<T>` to an endpoint instead.
 - **Retrieved text is untrusted data.** The system prompt in `AnswerService` wraps excerpts as data; keep it that way when changing prompts.
 
 ## Outline data source

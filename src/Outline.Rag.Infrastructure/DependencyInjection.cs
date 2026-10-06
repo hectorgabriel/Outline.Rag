@@ -1,6 +1,7 @@
 using CommunityToolkit.VectorData.PgVector;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using Microsoft.ML.Tokenizers;
 using Npgsql;
@@ -29,13 +30,10 @@ public static class DependencyInjection
         services.AddOptions<VectorStoreOptions>().BindConfiguration(VectorStoreOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
         services.AddOptions<AiOptions>().BindConfiguration(AiOptions.SectionName).ValidateDataAnnotations().ValidateOnStart();
 
-        services.AddHttpClient<IOutlineDocumentSource, OutlineApiClient>((sp, http) =>
-            {
-                var outline = sp.GetRequiredService<IOptions<OutlineOptions>>().Value;
-                http.BaseAddress = outline.BaseUrl;
-                http.DefaultRequestHeaders.Authorization = new("Bearer", outline.ApiToken);
-            })
-            .AddStandardResilienceHandler();
+        services.AddHttpClient<IOutlineDocumentSource, OutlineApiClient>(ConfigureOutlineClient).AddStandardResilienceHandler();
+        services.AddHttpClient(OutlineCollectionAccessResolver.HttpClientName, ConfigureOutlineClient).AddStandardResilienceHandler();
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddSingleton<ICollectionAccessResolver, OutlineCollectionAccessResolver>();
 
         services.AddSingleton<Tokenizer>(_ => TiktokenTokenizer.CreateForModel("gpt-4"));
         services.AddSingleton<IDocumentChunker, MarkdownHeadingChunker>();
@@ -71,5 +69,12 @@ public static class DependencyInjection
 
         services.AddAiProviders();
         return services;
+    }
+
+    private static void ConfigureOutlineClient(IServiceProvider sp, HttpClient http)
+    {
+        var outline = sp.GetRequiredService<IOptions<OutlineOptions>>().Value;
+        http.BaseAddress = outline.BaseUrl;
+        http.DefaultRequestHeaders.Authorization = new("Bearer", outline.ApiToken);
     }
 }

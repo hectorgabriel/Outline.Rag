@@ -115,13 +115,8 @@ internal sealed class OutlineApiClient(HttpClient http, IOptions<OutlineOptions>
         return body is null ? null : ToDomain(body.Data);
     }
 
-    private async Task<OutlineResponse<TData>> PostAsync<TData>(string path, object request, CancellationToken cancellationToken)
-    {
-        using var response = await http.PostAsJsonAsync(path, request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<OutlineResponse<TData>>(cancellationToken).ConfigureAwait(false)
-            ?? throw new InvalidOperationException($"Outline returned an empty body for {path}.");
-    }
+    private Task<OutlineResponse<TData>> PostAsync<TData>(string path, object request, CancellationToken cancellationToken) =>
+        http.PostOutlineAsync<TData>(path, request, cancellationToken);
 
     /// <returns><see langword="null"/> for drafts, archived and deleted documents, which are not indexed.</returns>
     private SourceDocument? ToDomain(OutlineDocumentDto dto)

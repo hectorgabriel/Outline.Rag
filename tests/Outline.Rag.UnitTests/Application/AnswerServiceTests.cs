@@ -15,6 +15,9 @@ public sealed class AnswerServiceTests
     private readonly IChunkIndex _index = Substitute.For<IChunkIndex>();
     private readonly IChatClient _chat = Substitute.For<IChatClient>();
 
+    // Retrieval needs at least one readable collection; an empty list means the caller can read nothing.
+    private static readonly Guid[] Readable = [Guid.NewGuid()];
+
     public AnswerServiceTests()
     {
         _embeddings
@@ -31,7 +34,7 @@ public sealed class AnswerServiceTests
         _index.SearchAsync(Arg.Any<ReadOnlyMemory<float>>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([new RetrievedChunk(TestData.Chunk(0, "irrelevant"), 0.1)]);
 
-        var answer = await CreateService().AskAsync("¿Qué es esto?", [], TestContext.Current.CancellationToken);
+        var answer = await CreateService().AskAsync("¿Qué es esto?", Readable, TestContext.Current.CancellationToken);
 
         Assert.Empty(answer.Citations);
         await _chat.DidNotReceive().GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>());
@@ -48,7 +51,7 @@ public sealed class AnswerServiceTests
         _chat.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>())
             .Returns(new ChatResponse(new ChatMessage(ChatRole.Assistant, "Use pg_restore [1], then migrate [2].")));
 
-        var answer = await CreateService().AskAsync("How do I restore?", [], TestContext.Current.CancellationToken);
+        var answer = await CreateService().AskAsync("How do I restore?", Readable, TestContext.Current.CancellationToken);
 
         Assert.Equal("Use pg_restore [1], then migrate [2].", answer.Answer);
         Assert.Equal([(1, "Database"), (2, "Upgrade")], answer.Citations.Select(c => (c.Number, c.HeadingPath)));
@@ -62,7 +65,7 @@ public sealed class AnswerServiceTests
         _chat.GetStreamingResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>())
             .Returns(new ChatResponseUpdate[] { new(ChatRole.Assistant, "Use pg_restore"), new(null, " [1].") }.ToAsyncEnumerable());
 
-        var answer = await CreateService().AskStreamingAsync("How do I restore?", [], TestContext.Current.CancellationToken);
+        var answer = await CreateService().AskStreamingAsync("How do I restore?", Readable, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [new AnswerPart(AnswerPartKind.Answer, "Use pg_restore"), new AnswerPart(AnswerPartKind.Answer, " [1].")],
@@ -82,7 +85,7 @@ public sealed class AnswerServiceTests
                 new(null, [new TextReasoningContent(""), new TextContent("Use pg_restore [1].")]),
             }.ToAsyncEnumerable());
 
-        var answer = await CreateService().AskStreamingAsync("How do I restore?", [], TestContext.Current.CancellationToken);
+        var answer = await CreateService().AskStreamingAsync("How do I restore?", Readable, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [new AnswerPart(AnswerPartKind.Reasoning, "Excerpt 1 covers restores."), new AnswerPart(AnswerPartKind.Answer, "Use pg_restore [1].")],
@@ -95,7 +98,7 @@ public sealed class AnswerServiceTests
         _index.SearchAsync(Arg.Any<ReadOnlyMemory<float>>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([new RetrievedChunk(TestData.Chunk(0, "irrelevant"), 0.1)]);
 
-        var answer = await CreateService().AskStreamingAsync("¿Qué es esto?", [], TestContext.Current.CancellationToken);
+        var answer = await CreateService().AskStreamingAsync("¿Qué es esto?", Readable, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [new AnswerPart(AnswerPartKind.Answer, AnswerService.NoResultsAnswer)],

@@ -50,13 +50,20 @@ services:
     profiles: [ui]
     restart: unless-stopped
     environment:
-      # Local, single-user setup: no login. Anyone who can reach :8080 can ask the wiki (and so can anyone who can
-      # reach the Api, see the access-control note in README.md). Some of these settings are only read on first
-      # start and then kept in the open_webui_data volume; change them in Admin Settings, or remove the volume.
-      WEBUI_AUTH: "False"
+      # Open WebUI signs users in and forwards each user's email to the Api, which searches only the collections
+      # that email can read in Outline. Locally, sign up with the email of an Outline user (the first account
+      # becomes the Open WebUI admin); with the demo wiki, admin@example.com. Some of these settings are only read
+      # on first start and then kept in the open_webui_data volume; change them in Admin Settings, or remove it.
+      #
+      # The Api trusts the forwarded email, so in production Open WebUI must sign people in through the company's
+      # identity provider (OAuth/OIDC) with the password form and sign-up disabled. Otherwise anyone could register
+      # as someone else and read what that person can read.
+      WEBUI_AUTH: "True"
       WEBUI_NAME: Outline RAG
       OPENAI_API_BASE_URL: http://host.docker.internal:5157/v1
-      OPENAI_API_KEY: unused   # the Api doesn't check it yet
+      # Must equal the Api's Auth:Gateway:ApiKey: export RAG_GATEWAY_API_KEY before `up`.
+      OPENAI_API_KEY: ${RAG_GATEWAY_API_KEY:-}
+      ENABLE_FORWARD_USER_INFO_HEADERS: "True"
       DEFAULT_MODELS: outline-wiki
       # Only the RAG model: hide Ollama's raw models and the arena, and don't download Open WebUI's own RAG models.
       ENABLE_OLLAMA_API: "False"

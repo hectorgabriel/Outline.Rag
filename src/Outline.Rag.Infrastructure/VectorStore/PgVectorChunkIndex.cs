@@ -54,12 +54,13 @@ internal sealed class PgVectorChunkIndex(PostgresCollection<Guid, ChunkRecord> c
         IReadOnlyCollection<Guid> collectionIds,
         CancellationToken cancellationToken)
     {
-        var options = new VectorSearchOptions<ChunkRecord>();
-        if (collectionIds.Count > 0)
+        if (collectionIds.Count == 0)
         {
-            var ids = collectionIds.ToArray();
-            options.Filter = r => ids.Contains(r.CollectionId);
+            return [];
         }
+
+        var ids = collectionIds.ToArray();
+        var options = new VectorSearchOptions<ChunkRecord> { Filter = r => ids.Contains(r.CollectionId) };
 
         var results = new List<RetrievedChunk>(top);
         await foreach (var result in collection.SearchAsync(queryEmbedding, top, options, cancellationToken).ConfigureAwait(false))

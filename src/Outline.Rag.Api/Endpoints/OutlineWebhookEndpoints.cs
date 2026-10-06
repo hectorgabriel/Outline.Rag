@@ -36,7 +36,8 @@ internal static class OutlineWebhookEndpoints
                 return Results.Accepted();
             })
             .WithTags("Webhooks")
-            .ExcludeFromDescription();
+            .ExcludeFromDescription()
+            .AllowAnonymous(); // Authenticated by its HMAC signature instead.
 
         return app;
     }

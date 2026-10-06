@@ -1,8 +1,10 @@
 using System.Globalization;
+using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Outline.Rag.Api.Security;
 using Outline.Rag.Application.Answering;
 using Outline.Rag.Domain;
 
@@ -29,14 +31,16 @@ internal static partial class OpenAiChatEndpoints
 
     public static IEndpointRouteBuilder MapOpenAiChat(this IEndpointRouteBuilder app)
     {
-        // Same access model as /api/ask: no caller authentication yet (see the TODO in RagEndpoints).
+        // Same access model as /api/ask: callers search only the collections they can read in Outline.
         var group = app.MapGroup("/v1").WithTags("OpenAI-compatible");
 
         group.MapGet("/models", () => TypedResults.Json(
                 new ModelList("list", [new ModelInfo(ModelId, "model", 0, "outline-rag")]), Json))
             .WithSummary("Lists the single RAG model, for OpenAI-compatible chat UIs.");
 
-        group.MapPost("/chat/completions", async (ChatCompletionRequest request, AnswerService answers, HttpContext http) =>
+        group.MapPost("/chat/completions", async (
+                ChatCompletionRequest request, ClaimsPrincipal caller, CallerCollections callerCollections,
+                AnswerService answers, HttpContext http) =>
             {
                 var question = LastUserText(request.Messages ?? []);
                 if (string.IsNullOrWhiteSpace(question))
@@ -44,13 +48,21 @@ internal static partial class OpenAiChatEndpoints
                     return Results.Problem("The request needs a user message with text.", statusCode: StatusCodes.Status400BadRequest);
                 }
 
+                if (question.Length > RequestLimits.MaxQuestionLength)
+                {
+                    return Results.Problem(
+                        $"The question is too long: {question.Length} characters, the limit is {RequestLimits.MaxQuestionLength}.",
+                        statusCode: StatusCodes.Status400BadRequest);
+                }
+
                 var ct = http.RequestAborted;
+                var collections = await callerCollections.ResolveAsync(caller, requested: null, ct);
                 var id = $"chatcmpl-{Guid.NewGuid():N}";
                 var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
                 if (!request.Stream)
                 {
-                    var answer = await answers.AskAsync(question, [], ct);
+                    var answer = await answers.AskAsync(question, collections, ct);
                     var content = answer.Answer + FormatSources(answer.Answer, answer.Citations);
                     return TypedResults.Json(
                         new ChatCompletion(id, "chat.completion", created, ModelId,
@@ -58,10 +70,11 @@ internal static partial class OpenAiChatEndpoints
                         Json);
                 }
 
-                var stream = await answers.AskStreamingAsync(question, [], ct);
+                var stream = await answers.AskStreamingAsync(question, collections, ct);
                 await WriteEventStreamAsync(http.Response, stream, id, created, ct);
                 return Results.Empty;
             })
+            .RequireRateLimiting(RagRateLimiting.AnswerPolicy)
             .WithSummary("Answers the latest user message from the wiki, OpenAI Chat Completions style (JSON or SSE).");
 
         return app;

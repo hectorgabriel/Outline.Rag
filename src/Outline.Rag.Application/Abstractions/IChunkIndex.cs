@@ -19,7 +19,10 @@ public interface IChunkIndex
 
     Task DeleteDocumentAsync(Guid documentId, CancellationToken cancellationToken);
 
-    /// <param name="collectionIds">When not empty, only chunks from these Outline collections are returned.</param>
+    /// <param name="collectionIds">
+    /// Only chunks from these Outline collections are returned; empty returns nothing, so a caller with no
+    /// readable collections can never fall through to an unfiltered search.
+    /// </param>
     Task<IReadOnlyList<RetrievedChunk>> SearchAsync(
         ReadOnlyMemory<float> queryEmbedding,
         int top,

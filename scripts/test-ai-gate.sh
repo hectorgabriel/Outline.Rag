@@ -15,7 +15,7 @@
 #   5. Tiny generation through the gate      (/v1/chat/completions)
 #
 # Optional environment variables:
-#   BASE_URL         Server URL (default: https://10.90.0.12:8443)
+#   BASE_URL         Server URL (default: https://10.97.0.19:8443)
 #   TEST_MODEL       Model for the generation test (default: qwen2.5-coder:14b)
 #   AI_CA_FILE       Path to root.crt, if the CA is not trusted system-wide
 #   TIMEOUT          Request timeout in seconds (default: 10)
@@ -26,7 +26,7 @@
 
 set -u
 
-BASE_URL="${BASE_URL:-https://10.90.0.12:8443}"
+BASE_URL="${BASE_URL:-https://10.97.0.19:8443}"
 TEST_MODEL="${TEST_MODEL:-qwen2.5-coder:14b}"
 TIMEOUT="${TIMEOUT:-10}"
 fails=0

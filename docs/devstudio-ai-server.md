@@ -1,6 +1,6 @@
 # DevStudio AI Server (Ollama endpoint)
 
-Corporate GPU/Ollama server ("servidor IA") hosted on the `DevStudio` machine, reachable from the office network at `10.90.0.12`.
+Corporate GPU/Ollama server ("servidor IA") hosted on the `DevStudio` machine, reachable from the office network at `10.97.0.19`.
 Validated end-to-end on **2026-09-28** (native + OpenAI-compatible generation through the gate, TLS trust from macOS).
 
 > ⚠️ **No credentials in this file.** The key (`SERVIDOR_IA_CLAVE`) comes from the platform team and must stay in environment variables, user-secrets or a password manager — never commit it.
@@ -9,10 +9,10 @@ Validated end-to-end on **2026-09-28** (native + OpenAI-compatible generation th
 
 | Item | Value |
 |---|---|
-| API endpoint | `https://10.90.0.12:8443` (Caddy reverse proxy, internal TLS) |
+| API endpoint | `https://10.97.0.19:8443` (Caddy reverse proxy, internal TLS) |
 | Auth | `Authorization: Bearer $SERVIDOR_IA_CLAVE` — required on every request; anything else gets `401 "no autorizado"` |
 | Backend | Ollama **0.34.3** (native API `/api/*`, OpenAI-compatible API `/v1/*`) |
-| SSH | `ssh DevStudio@10.90.0.12` (password auth; the box is a Mac) |
+| SSH | `ssh DevStudio@10.97.0.19` (password auth; the box is a Mac) |
 
 Notes:
 - Port `:80` answers `308` → redirects to `:8443`. Plain Ollama on `:11434` is **not** exposed to the network — go through the gate.
@@ -26,15 +26,15 @@ There's a reusable smoke test under `scripts/`: `./scripts/test-ai-gate.sh` (rea
 export SERVIDOR_IA_CLAVE="<64-character key>"
 
 # version
-curl -sS https://10.90.0.12:8443/api/version -H "Authorization: Bearer $SERVIDOR_IA_CLAVE"
+curl -sS https://10.97.0.19:8443/api/version -H "Authorization: Bearer $SERVIDOR_IA_CLAVE"
 # -> {"version":"0.34.3"}
 
 # model list (native and OpenAI-compatible)
-curl -sS https://10.90.0.12:8443/api/tags   -H "Authorization: Bearer $SERVIDOR_IA_CLAVE"
-curl -sS https://10.90.0.12:8443/v1/models  -H "Authorization: Bearer $SERVIDOR_IA_CLAVE"
+curl -sS https://10.97.0.19:8443/api/tags   -H "Authorization: Bearer $SERVIDOR_IA_CLAVE"
+curl -sS https://10.97.0.19:8443/v1/models  -H "Authorization: Bearer $SERVIDOR_IA_CLAVE"
 
 # one-line generation (OpenAI-compatible)
-curl -sS https://10.90.0.12:8443/v1/chat/completions \
+curl -sS https://10.97.0.19:8443/v1/chat/completions \
   -H "Authorization: Bearer $SERVIDOR_IA_CLAVE" -H "Content-Type: application/json" \
   -d '{"model":"qwen2.5-coder:14b","messages":[{"role":"user","content":"Responde con una sola linea: PRUEBA OK"}]}'
 ```
@@ -60,7 +60,7 @@ The endpoint uses Caddy's internal CA, so clients must trust its root certificat
 Get and verify:
 
 ```bash
-scp DevStudio@10.90.0.12:'~/Documents/certificados/root.crt' .
+scp DevStudio@10.97.0.19:'~/Documents/certificados/root.crt' .
 openssl x509 -in root.crt -noout -subject -issuer -dates -fingerprint -sha256
 ```
 
@@ -74,6 +74,6 @@ Tools that bundle their own CA list (some Python/Node setups) may still need to 
 
 ## Gotchas
 
-- Every request needs the Bearer header. Opening `https://10.90.0.12:8443/` in a browser only shows `no autorizado`.
+- Every request needs the Bearer header. Opening `https://10.97.0.19:8443/` in a browser only shows `no autorizado`.
 - The server's leaf certificates rotate often (Caddy renews them); only the **root** needs to be installed, and only once.
 - Keep `SERVIDOR_IA_CLAVE` out of git, logs and screenshots. If it leaks, ask the platform team to rotate it.

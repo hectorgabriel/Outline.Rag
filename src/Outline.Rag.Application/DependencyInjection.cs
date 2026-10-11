@@ -18,6 +18,7 @@ public static class DependencyInjection
         services.AddScoped<DocumentIngestionService>();
         services.AddScoped<OutlineSyncService>();
         services.AddScoped<RetrievalService>();
+        services.AddScoped<QuestionRewriter>();
         services.AddScoped<AnswerService>();
         return services;
     }

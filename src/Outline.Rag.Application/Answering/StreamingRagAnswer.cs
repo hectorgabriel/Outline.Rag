@@ -6,7 +6,11 @@ namespace Outline.Rag.Application.Answering;
 /// A streamed <see cref="RagAnswer"/>: the citations are known before the first token, the text is not.
 /// </summary>
 /// <param name="Parts">Reasoning and answer fragments in the order the model writes them; enumerate once.</param>
-public sealed record StreamingRagAnswer(IAsyncEnumerable<AnswerPart> Parts, IReadOnlyList<Citation> Citations);
+/// <param name="RewrittenQuestion">
+/// The standalone question that was searched and answered when it differs from the one asked (a follow-up), else null.
+/// </param>
+public sealed record StreamingRagAnswer(
+    IAsyncEnumerable<AnswerPart> Parts, IReadOnlyList<Citation> Citations, string? RewrittenQuestion = null);
 
 /// <param name="Kind">Whether <paramref name="Text"/> is the model's reasoning or part of the answer.</param>
 public sealed record AnswerPart(AnswerPartKind Kind, string Text);

@@ -42,6 +42,38 @@ public sealed class OpenAiChatEndpointsTests
         Assert.Null(OpenAiChatEndpoints.LastUserText([Message("system", "\"Hi\"")]));
 
     [Fact]
+    public void History_KeepsEarlierTurnsWithoutSystemOrCurrentQuestion()
+    {
+        var history = OpenAiChatEndpoints.History(
+        [
+            Message("system", "\"Be brief.\""),
+            Message("user", "\"First question\""),
+            Message("assistant", "\"First answer\""),
+            Message("user", "\"Follow-up\""),
+        ]);
+
+        Assert.Equal(
+            [("user", "First question"), ("assistant", "First answer")],
+            history.Select(m => (m.Role.Value, m.Text)));
+    }
+
+    [Fact]
+    public void History_StripsSourcesAndReasoningFromAnswers()
+    {
+        var answer = "<details type=\"reasoning\" done=\"true\">\n<summary>Thought</summary>\nhmm\n</details>\n20 days [1]."
+            + OpenAiChatEndpoints.FormatSources("[1]", [Citation(1, "Benefits")]);
+
+        var history = OpenAiChatEndpoints.History(
+            [Message("user", "\"Vacation?\""), Message("assistant", JsonSerializer.Serialize(answer)), Message("user", "\"And sick days?\"")]);
+
+        Assert.Equal("20 days [1].", history[1].Text);
+    }
+
+    [Fact]
+    public void History_ForFirstMessage_IsEmpty() =>
+        Assert.Empty(OpenAiChatEndpoints.History([Message("system", "\"Hi\""), Message("user", "\"Question\"")]));
+
+    [Fact]
     public void FormatSources_ListsOnlyCitedExcerpts()
     {
         var sources = OpenAiChatEndpoints.FormatSources(

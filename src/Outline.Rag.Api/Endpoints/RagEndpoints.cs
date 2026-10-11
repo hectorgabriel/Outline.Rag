@@ -44,7 +44,7 @@ internal static class RagEndpoints
                 AnswerService answers, CancellationToken ct) =>
             {
                 var collections = await callerCollections.ResolveAsync(caller, request.CollectionIds, ct);
-                var answer = await answers.AskAsync(request.Question, collections, ct);
+                var answer = await answers.AskAsync(request.Question, history: [], collections, ct);
                 return TypedResults.Ok(answer);
             })
             .AddEndpointFilter<ValidateRequest<AskRequest>>()

@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.AI;
 using Outline.Rag.Api.Security;
 using Outline.Rag.Application.Answering;
 using Outline.Rag.Domain;
@@ -18,7 +19,7 @@ public sealed record ChatCompletionMessage(string Role, JsonElement Content);
 /// <summary>
 /// The subset of the OpenAI Chat Completions API that chat front ends such as Open WebUI need, so they can offer
 /// the wiki as a "model". Each request answers the latest user message with <see cref="AnswerService"/>; earlier
-/// turns are not used for retrieval, so follow-ups must be self-contained.
+/// turns go along as history, so follow-ups such as "and for part-timers?" are rewritten into a full question first.
 /// </summary>
 internal static partial class OpenAiChatEndpoints
 {
@@ -55,6 +56,7 @@ internal static partial class OpenAiChatEndpoints
                         statusCode: StatusCodes.Status400BadRequest);
                 }
 
+                var history = History(request.Messages ?? []);
                 var ct = http.RequestAborted;
                 var collections = await callerCollections.ResolveAsync(caller, requested: null, ct);
                 var id = $"chatcmpl-{Guid.NewGuid():N}";
@@ -62,7 +64,7 @@ internal static partial class OpenAiChatEndpoints
 
                 if (!request.Stream)
                 {
-                    var answer = await answers.AskAsync(question, collections, ct);
+                    var answer = await answers.AskAsync(question, history, collections, ct);
                     var content = answer.Answer + FormatSources(answer.Answer, answer.Citations);
                     return TypedResults.Json(
                         new ChatCompletion(id, "chat.completion", created, ModelId,
@@ -70,7 +72,7 @@ internal static partial class OpenAiChatEndpoints
                         Json);
                 }
 
-                var stream = await answers.AskStreamingAsync(question, collections, ct);
+                var stream = await answers.AskStreamingAsync(question, history, collections, ct);
                 await WriteEventStreamAsync(http.Response, stream, id, created, ct);
                 return Results.Empty;
             })
@@ -95,6 +97,11 @@ internal static partial class OpenAiChatEndpoints
             ct);
 
         await Send(new ChoiceMessage("assistant", ""));
+        if (answer.RewrittenQuestion is { } rewritten)
+        {
+            // Shows what a follow-up was understood as, in the same collapsible block as the model's reasoning.
+            await Send(new ChoiceMessage(null, null, $"Searching the wiki for: {rewritten}\n\n"));
+        }
 
         // Reasoning goes out as `reasoning_content`, which Open WebUI shows as a collapsible "Thinking" block.
         var text = new StringBuilder();
@@ -126,18 +133,58 @@ internal static partial class OpenAiChatEndpoints
         await response.Body.FlushAsync(ct);
     }
 
-    internal static string? LastUserText(IReadOnlyList<ChatCompletionMessage> messages)
+    internal static string? LastUserText(IReadOnlyList<ChatCompletionMessage> messages) =>
+        messages.LastOrDefault(m => m.Role == "user") is { } last ? Text(last.Content) : null;
+
+    /// <summary>
+    /// The user and assistant turns before the latest user message, oldest first. Assistant turns lose what this
+    /// endpoint appended (the sources list) and any reasoning block the chat UI sends back.
+    /// </summary>
+    internal static IReadOnlyList<ChatMessage> History(IReadOnlyList<ChatCompletionMessage> messages)
     {
-        var content = messages.LastOrDefault(m => m.Role == "user")?.Content;
-        return content?.ValueKind switch
+        var lastUser = messages.Count - 1;
+        while (lastUser >= 0 && messages[lastUser].Role != "user")
         {
-            JsonValueKind.String => content.Value.GetString(),
-            JsonValueKind.Array => string.Join('\n', content.Value.EnumerateArray()
-                .Where(part => part.TryGetProperty("type", out var type) && type.ValueEquals("text")
-                    && part.TryGetProperty("text", out var t) && t.ValueKind == JsonValueKind.String)
-                .Select(part => part.GetProperty("text").GetString())),
-            _ => null,
-        };
+            lastUser--;
+        }
+
+        var history = new List<ChatMessage>();
+        foreach (var message in messages.Take(Math.Max(lastUser, 0)))
+        {
+            var text = message.Role switch
+            {
+                "user" => Text(message.Content),
+                "assistant" => StripAnswerExtras(Text(message.Content)),
+                _ => null,
+            };
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                history.Add(new ChatMessage(message.Role == "user" ? ChatRole.User : ChatRole.Assistant, text.Trim()));
+            }
+        }
+
+        return history;
+    }
+
+    private static string? Text(JsonElement content) => content.ValueKind switch
+    {
+        JsonValueKind.String => content.GetString(),
+        JsonValueKind.Array => string.Join('\n', content.EnumerateArray()
+            .Where(part => part.TryGetProperty("type", out var type) && type.ValueEquals("text")
+                && part.TryGetProperty("text", out var t) && t.ValueKind == JsonValueKind.String)
+            .Select(part => part.GetProperty("text").GetString())),
+        _ => null,
+    };
+
+    private static string? StripAnswerExtras(string? answer)
+    {
+        if (answer is null)
+        {
+            return null;
+        }
+
+        var sources = answer.IndexOf(SourcesHeading, StringComparison.Ordinal);
+        return ReasoningBlock().Replace(sources >= 0 ? answer[..sources] : answer, "");
     }
 
     /// <summary>
@@ -156,7 +203,7 @@ internal static partial class OpenAiChatEndpoints
             return "";
         }
 
-        var sb = new StringBuilder("\n\n---\n**Sources**\n");
+        var sb = new StringBuilder(SourcesHeading).Append('\n');
         foreach (var c in used)
         {
             var label = string.IsNullOrEmpty(c.HeadingPath) ? c.Title : $"{c.Title} > {c.HeadingPath}";
@@ -167,8 +214,14 @@ internal static partial class OpenAiChatEndpoints
         return sb.ToString();
     }
 
+    private const string SourcesHeading = "\n\n---\n**Sources**";
+
     [GeneratedRegex(@"\[(\d+(?:\s*,\s*\d+)*)\]")]
     private static partial Regex CitationMarker();
+
+    /// <summary>Open WebUI keeps streamed reasoning in the message as a details element.</summary>
+    [GeneratedRegex(@"<details\b[^>]*>.*?</details>", RegexOptions.Singleline | RegexOptions.IgnoreCase)]
+    private static partial Regex ReasoningBlock();
 
     private sealed record ModelList(string Object, IReadOnlyList<ModelInfo> Data);
 

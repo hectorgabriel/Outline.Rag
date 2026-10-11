@@ -8,9 +8,10 @@ using Outline.Rag.Domain;
 namespace Outline.Rag.Application.Answering;
 
 /// <summary>
-/// Answers a question from retrieved wiki chunks, citing them as [n].
+/// Answers a question from retrieved wiki chunks, citing them as [n]. In a conversation, the latest message is first
+/// rewritten into a standalone question (<see cref="QuestionRewriter"/>), which is what gets searched and answered.
 /// </summary>
-public sealed class AnswerService(RetrievalService retrieval, IChatClient chatClient)
+public sealed class AnswerService(RetrievalService retrieval, QuestionRewriter rewriter, IChatClient chatClient)
 {
     internal const string SystemPrompt =
         """
@@ -23,18 +24,22 @@ public sealed class AnswerService(RetrievalService retrieval, IChatClient chatCl
 
     internal const string NoResultsAnswer = "No relevant documents were found in the wiki for this question.";
 
+    /// <param name="history">Earlier user and assistant messages, oldest first; empty for a single question.</param>
     public async Task<RagAnswer> AskAsync(
         string question,
+        IReadOnlyList<ChatMessage> history,
         IReadOnlyCollection<Guid> collectionIds,
         CancellationToken cancellationToken)
     {
-        var retrieved = await retrieval.SearchAsync(question, collectionIds, top: null, cancellationToken).ConfigureAwait(false);
+        var standalone = await rewriter.ToStandaloneAsync(history, question, cancellationToken).ConfigureAwait(false);
+        var retrieved = await retrieval.SearchAsync(Queries(question, standalone), collectionIds, top: null, cancellationToken)
+            .ConfigureAwait(false);
         if (retrieved.Count == 0)
         {
             return new RagAnswer(NoResultsAnswer, []);
         }
 
-        var response = await chatClient.GetResponseAsync(BuildMessages(question, retrieved), cancellationToken: cancellationToken)
+        var response = await chatClient.GetResponseAsync(BuildMessages(standalone, retrieved), cancellationToken: cancellationToken)
             .ConfigureAwait(false);
         return new RagAnswer(response.Text, BuildCitations(retrieved));
     }
@@ -45,17 +50,30 @@ public sealed class AnswerService(RetrievalService retrieval, IChatClient chatCl
     /// </summary>
     public async Task<StreamingRagAnswer> AskStreamingAsync(
         string question,
+        IReadOnlyList<ChatMessage> history,
         IReadOnlyCollection<Guid> collectionIds,
         CancellationToken cancellationToken)
     {
-        var retrieved = await retrieval.SearchAsync(question, collectionIds, top: null, cancellationToken).ConfigureAwait(false);
+        var standalone = await rewriter.ToStandaloneAsync(history, question, cancellationToken).ConfigureAwait(false);
+        var rewritten = string.Equals(standalone, question.Trim(), StringComparison.Ordinal) ? null : standalone;
+
+        var retrieved = await retrieval.SearchAsync(Queries(question, standalone), collectionIds, top: null, cancellationToken)
+            .ConfigureAwait(false);
         if (retrieved.Count == 0)
         {
-            return new StreamingRagAnswer(new[] { new AnswerPart(AnswerPartKind.Answer, NoResultsAnswer) }.ToAsyncEnumerable(), []);
+            return new StreamingRagAnswer(
+                new[] { new AnswerPart(AnswerPartKind.Answer, NoResultsAnswer) }.ToAsyncEnumerable(), [], rewritten);
         }
 
-        return new StreamingRagAnswer(StreamParts(BuildMessages(question, retrieved), cancellationToken), BuildCitations(retrieved));
+        return new StreamingRagAnswer(
+            StreamParts(BuildMessages(standalone, retrieved), cancellationToken), BuildCitations(retrieved), rewritten);
     }
+
+    /// <summary>
+    /// What to search for: the standalone question, plus the message as typed when the rewrite changed it.
+    /// </summary>
+    public static IReadOnlyList<string> Queries(string question, string standalone) =>
+        string.Equals(standalone, question.Trim(), StringComparison.Ordinal) ? [standalone] : [standalone, question];
 
     private async IAsyncEnumerable<AnswerPart> StreamParts(
         ChatMessage[] messages,

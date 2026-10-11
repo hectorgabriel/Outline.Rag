@@ -14,9 +14,12 @@ public sealed class AnswerServiceTests
     private readonly IEmbeddingGenerator<string, Embedding<float>> _embeddings = Substitute.For<IEmbeddingGenerator<string, Embedding<float>>>();
     private readonly IChunkIndex _index = Substitute.For<IChunkIndex>();
     private readonly IChatClient _chat = Substitute.For<IChatClient>();
+    private readonly IChatClient _rewriterChat = Substitute.For<IChatClient>();
 
     // Retrieval needs at least one readable collection; an empty list means the caller can read nothing.
     private static readonly Guid[] Readable = [Guid.NewGuid()];
+
+    private static readonly string[] FollowUpQueries = ["How do I restore the staging database?", "And for staging?"];
 
     public AnswerServiceTests()
     {
@@ -26,7 +29,7 @@ public sealed class AnswerServiceTests
     }
 
     private AnswerService CreateService() =>
-        new(new RetrievalService(_embeddings, _index, Options.Create(new RagOptions { MinScore = 0.5 })), _chat);
+        new(new RetrievalService(_embeddings, _index, Options.Create(new RagOptions { MinScore = 0.5 })), new QuestionRewriter(_rewriterChat), _chat);
 
     [Fact]
     public async Task AskAsync_WithoutRelevantChunks_DoesNotCallModel()
@@ -34,7 +37,7 @@ public sealed class AnswerServiceTests
         _index.SearchAsync(Arg.Any<ReadOnlyMemory<float>>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([new RetrievedChunk(TestData.Chunk(0, "irrelevant"), 0.1)]);
 
-        var answer = await CreateService().AskAsync("¿Qué es esto?", Readable, TestContext.Current.CancellationToken);
+        var answer = await CreateService().AskAsync("¿Qué es esto?", [], Readable, TestContext.Current.CancellationToken);
 
         Assert.Empty(answer.Citations);
         await _chat.DidNotReceive().GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>());
@@ -51,7 +54,7 @@ public sealed class AnswerServiceTests
         _chat.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>())
             .Returns(new ChatResponse(new ChatMessage(ChatRole.Assistant, "Use pg_restore [1], then migrate [2].")));
 
-        var answer = await CreateService().AskAsync("How do I restore?", Readable, TestContext.Current.CancellationToken);
+        var answer = await CreateService().AskAsync("How do I restore?", [], Readable, TestContext.Current.CancellationToken);
 
         Assert.Equal("Use pg_restore [1], then migrate [2].", answer.Answer);
         Assert.Equal([(1, "Database"), (2, "Upgrade")], answer.Citations.Select(c => (c.Number, c.HeadingPath)));
@@ -65,7 +68,7 @@ public sealed class AnswerServiceTests
         _chat.GetStreamingResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>())
             .Returns(new ChatResponseUpdate[] { new(ChatRole.Assistant, "Use pg_restore"), new(null, " [1].") }.ToAsyncEnumerable());
 
-        var answer = await CreateService().AskStreamingAsync("How do I restore?", Readable, TestContext.Current.CancellationToken);
+        var answer = await CreateService().AskStreamingAsync("How do I restore?", [], Readable, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [new AnswerPart(AnswerPartKind.Answer, "Use pg_restore"), new AnswerPart(AnswerPartKind.Answer, " [1].")],
@@ -85,7 +88,7 @@ public sealed class AnswerServiceTests
                 new(null, [new TextReasoningContent(""), new TextContent("Use pg_restore [1].")]),
             }.ToAsyncEnumerable());
 
-        var answer = await CreateService().AskStreamingAsync("How do I restore?", Readable, TestContext.Current.CancellationToken);
+        var answer = await CreateService().AskStreamingAsync("How do I restore?", [], Readable, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [new AnswerPart(AnswerPartKind.Reasoning, "Excerpt 1 covers restores."), new AnswerPart(AnswerPartKind.Answer, "Use pg_restore [1].")],
@@ -98,13 +101,51 @@ public sealed class AnswerServiceTests
         _index.SearchAsync(Arg.Any<ReadOnlyMemory<float>>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns([new RetrievedChunk(TestData.Chunk(0, "irrelevant"), 0.1)]);
 
-        var answer = await CreateService().AskStreamingAsync("¿Qué es esto?", Readable, TestContext.Current.CancellationToken);
+        var answer = await CreateService().AskStreamingAsync("¿Qué es esto?", [], Readable, TestContext.Current.CancellationToken);
 
         Assert.Equal(
             [new AnswerPart(AnswerPartKind.Answer, AnswerService.NoResultsAnswer)],
             await answer.Parts.ToListAsync(TestContext.Current.CancellationToken));
         Assert.Empty(answer.Citations);
         _chat.DidNotReceive().GetStreamingResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AskStreamingAsync_FollowUp_SearchesBothPhrasingsAndAnswersTheStandaloneQuestion()
+    {
+        _rewriterChat.GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>())
+            .Returns(new ChatResponse(new ChatMessage(ChatRole.Assistant, "How do I restore the staging database?")));
+        _index.SearchAsync(Arg.Any<ReadOnlyMemory<float>>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([new RetrievedChunk(TestData.Chunk(0, "Restore with pg_restore.", "Database"), 0.9)]);
+        _chat.GetStreamingResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>())
+            .Returns(new ChatResponseUpdate[] { new(ChatRole.Assistant, "Use pg_restore [1].") }.ToAsyncEnumerable());
+
+        var answer = await CreateService().AskStreamingAsync(
+            "And for staging?",
+            [new(ChatRole.User, "How do I restore production?"), new(ChatRole.Assistant, "Use pg_restore [1].")],
+            Readable,
+            TestContext.Current.CancellationToken);
+        await answer.Parts.ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal("How do I restore the staging database?", answer.RewrittenQuestion);
+        await _embeddings.Received().GenerateAsync(
+            Arg.Is<IEnumerable<string>>(v => v.SequenceEqual(FollowUpQueries)),
+            Arg.Any<EmbeddingGenerationOptions?>(), Arg.Any<CancellationToken>());
+        _chat.Received().GetStreamingResponseAsync(
+            Arg.Is<IEnumerable<ChatMessage>>(m => m.Last().Text.EndsWith("Question: How do I restore the staging database?" + Environment.NewLine, StringComparison.Ordinal)),
+            Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task AskStreamingAsync_FirstQuestion_SkipsTheRewrite()
+    {
+        _index.SearchAsync(Arg.Any<ReadOnlyMemory<float>>(), Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns([new RetrievedChunk(TestData.Chunk(0, "irrelevant"), 0.1)]);
+
+        var answer = await CreateService().AskStreamingAsync("How do I restore?", [], Readable, TestContext.Current.CancellationToken);
+
+        Assert.Null(answer.RewrittenQuestion);
+        await _rewriterChat.DidNotReceive().GetResponseAsync(Arg.Any<IEnumerable<ChatMessage>>(), Arg.Any<ChatOptions?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

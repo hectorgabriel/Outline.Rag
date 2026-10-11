@@ -63,6 +63,7 @@ public static class DependencyInjection
         services.AddSingleton<NpgsqlIndexedDocumentStore>();
         services.AddSingleton<IIndexedDocumentStore>(sp => sp.GetRequiredService<NpgsqlIndexedDocumentStore>());
         services.AddSingleton(sp => new RagDatabaseInitializer(
+            sp.GetRequiredService<NpgsqlDataSource>(),
             sp.GetRequiredService<IChunkIndex>(),
             sp.GetRequiredService<NpgsqlSyncCheckpointStore>(),
             sp.GetRequiredService<NpgsqlIndexedDocumentStore>()));

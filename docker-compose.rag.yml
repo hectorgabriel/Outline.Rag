@@ -65,6 +65,9 @@ services:
       OPENAI_API_KEY: ${RAG_GATEWAY_API_KEY:-}
       ENABLE_FORWARD_USER_INFO_HEADERS: "True"
       DEFAULT_MODELS: outline-wiki
+      # Without this, non-admin users see no models until an admin makes outline-wiki public. The Api already scopes
+      # every answer to what the caller can read in Outline, so Open WebUI's per-model access control adds nothing.
+      BYPASS_MODEL_ACCESS_CONTROL: "True"
       # Only the RAG model: hide Ollama's raw models and the arena, and don't download Open WebUI's own RAG models.
       ENABLE_OLLAMA_API: "False"
       ENABLE_EVALUATION_ARENA_MODELS: "False"

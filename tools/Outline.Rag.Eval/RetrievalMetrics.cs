@@ -7,7 +7,9 @@ namespace Outline.Rag.Eval;
 /// Optional heading that must appear in the chunk's heading path too, for answers that sit in one section of a long
 /// document. Without it, any chunk of an expected document counts.
 /// </param>
-internal sealed record EvalCase(string Question, IReadOnlyList<string> Expected, string? Section = null)
+/// <param name="History">Earlier turns of the conversation, oldest first, when the question is a follow-up.</param>
+internal sealed record EvalCase(
+    string Question, IReadOnlyList<string> Expected, string? Section = null, IReadOnlyList<EvalTurn>? History = null)
 {
     public bool Answerable => Expected.Count > 0;
 
@@ -16,10 +18,14 @@ internal sealed record EvalCase(string Question, IReadOnlyList<string> Expected,
         && (Section is null || chunk.HeadingPath.Contains(Section, StringComparison.OrdinalIgnoreCase));
 }
 
+/// <param name="Role">"user" or "assistant".</param>
+internal sealed record EvalTurn(string Role, string Content);
+
 internal sealed record EvalDataset(string Name, IReadOnlyList<EvalCase> Cases);
 
 /// <summary>What retrieval returned for one case, before any score cut-off.</summary>
-internal sealed record CaseResult(EvalCase Case, IReadOnlyList<RetrievedChunk> Retrieved)
+/// <param name="SearchedQuestion">The question as searched, when a follow-up was rewritten into a different one.</param>
+internal sealed record CaseResult(EvalCase Case, IReadOnlyList<RetrievedChunk> Retrieved, string? SearchedQuestion = null)
 {
     /// <summary>The chunks the answer model would see with <paramref name="minScore"/> applied.</summary>
     public IEnumerable<RetrievedChunk> Kept(double minScore) => Retrieved.Where(r => r.Score >= minScore);

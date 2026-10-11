@@ -1,18 +1,21 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Outline.Rag.Application;
 using Outline.Rag.Application.Abstractions;
+using Outline.Rag.Application.Answering;
 using Outline.Rag.Application.Retrieval;
 using Outline.Rag.Eval;
 using Outline.Rag.Infrastructure;
 
 // Measures retrieval against a dataset of questions with known source documents:
-//   dotnet run --project tools/Outline.Rag.Eval -- --email admin@example.com [--dataset path.json] [--top 10]
-// Needs the RAG database already indexed by the Worker. Answers are not generated, so no chat model is called.
+//   dotnet run --project tools/Outline.Rag.Eval -- --email admin@example.com [--dataset path.json] [--top 10] [--rewrite false]
+// Needs the RAG database already indexed by the Worker. Answers are not generated; the chat model is only called to
+// rewrite follow-up questions (cases with a history), as the chat endpoint does.
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 {
     Args = args,
@@ -49,13 +52,22 @@ if (collections.Count == 0)
 }
 
 var retrieval = services.GetRequiredService<RetrievalService>();
+var rewriter = services.GetRequiredService<QuestionRewriter>();
 var results = new List<CaseResult>(dataset.Cases.Count);
 var elapsed = Stopwatch.StartNew();
 foreach (var evalCase in dataset.Cases)
 {
-    var retrieved = await retrieval.SearchAsync(evalCase.Question, [.. collections], top, CancellationToken.None)
+    var question = evalCase.Question;
+    if (options.Rewrite && evalCase.History is { Count: > 0 } history)
+    {
+        ChatMessage[] turns = [.. history.Select(t => new ChatMessage(new ChatRole(t.Role), t.Content))];
+        question = await rewriter.ToStandaloneAsync(turns, question, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    // Same queries as the chat endpoint: the rewrite, plus the follow-up as typed when they differ.
+    var retrieved = await retrieval.SearchAsync(AnswerService.Queries(evalCase.Question, question), [.. collections], top, CancellationToken.None)
         .ConfigureAwait(false);
-    results.Add(new CaseResult(evalCase, retrieved));
+    results.Add(new CaseResult(evalCase, retrieved, question == evalCase.Question ? null : question));
 }
 
 elapsed.Stop();

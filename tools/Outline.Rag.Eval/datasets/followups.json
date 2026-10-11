@@ -1,0 +1,125 @@
+{
+  "name": "Follow-up questions (demo wiki)",
+  "cases": [
+    {
+      "history": [
+        { "role": "user", "content": "How many vacation days do I get per year?" },
+        { "role": "assistant", "content": "You get 20 days of vacation and personal days plus 11 local holidays every year [1]." }
+      ],
+      "question": "And how often can I take a longer break?",
+      "expected": ["Benefits & Perks"], "section": "Sabbatical"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "Who provides our dental insurance?" },
+        { "role": "assistant", "content": "Dental insurance in the US is provided through MetLife, and the company pays 100% of the premium [1]." }
+      ],
+      "question": "What about vision?",
+      "expected": ["Benefits & Perks"], "section": "Vision Insurance"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "What share of the medical insurance premium does the company cover?" },
+        { "role": "assistant", "content": "The company pays 75% of the medical premium and the employee pays 25% [1]." }
+      ],
+      "question": "And if I live outside the US?",
+      "expected": ["Benefits & Perks"], "section": "Health Insurance for Staff Outside the US"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "How much paid leave does the primary caregiver of a new child get?" },
+        { "role": "assistant", "content": "The primary caregiver can take up to 16 weeks of leave at 100% pay [1]." }
+      ],
+      "question": "And the other parent?",
+      "expected": ["Benefits & Perks"], "section": "Family Leave"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "What paid family leave does California offer?" },
+        { "role": "assistant", "content": "California residents can get additional paid family leave through the state program [1]." }
+      ],
+      "question": "Does Oregon have something similar?",
+      "expected": ["State Medical and Family Leave Provisions"], "section": "Oregon"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "Do we work four-day weeks in the summer?" },
+        { "role": "assistant", "content": "Yes, from May 1 through August 31 we work 4-day weeks [1]." }
+      ],
+      "question": "Do new hires get that too?",
+      "expected": ["Benefits & Perks"], "section": "Summer Hours"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "Which system handles invoices and customer accounts?" },
+        { "role": "assistant", "content": "Queenbee is the invoice, accounting and identity system [1]." }
+      ],
+      "question": "And where do we track exceptions?",
+      "expected": ["Our Internal Systems"], "section": "Sentry"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "How long are our work cycles?" },
+        { "role": "assistant", "content": "We work in 6-week cycles [1]." }
+      ],
+      "question": "What happens between them?",
+      "expected": ["How We Work"], "section": "Cooldown"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "Can I give paid talks at conferences?" },
+        { "role": "assistant", "content": "Yes, an occasional speaking gig is fine as long as it doesn't require multiple days off for travel [1]." }
+      ],
+      "question": "What kinds of side work are not allowed?",
+      "expected": ["A Note About Moonlighting"], "section": "Not OK"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "What does a senior programmer do?" },
+        { "role": "assistant", "content": "Senior programmers work independently on complex features and help others [1]." }
+      ],
+      "question": "And in QA?",
+      "expected": ["Titles for QA"]
+    },
+    {
+      "history": [
+        { "role": "user", "content": "When are performance reviews held for new hires?" },
+        { "role": "assistant", "content": "New hires have formal reviews at 3, 6 and 12 months [1]." }
+      ],
+      "question": "And how do raises work?",
+      "expected": ["Making a Career"], "section": "Pay & Promotions"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "¿Cuántos días de vacaciones tengo al año?" },
+        { "role": "assistant", "content": "Tienes 20 días de vacaciones y días personales, más 11 feriados locales al año [1]." }
+      ],
+      "question": "¿Y si me enfermo?",
+      "expected": ["Benefits & Perks"], "section": "Paid Sick Time"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "¿La empresa paga un espacio de coworking?" },
+        { "role": "assistant", "content": "Sí, puedes cobrar hasta 200 dólares al mes por un espacio de coworking [1]." }
+      ],
+      "question": "¿Y los muebles de mi oficina en casa?",
+      "expected": ["Benefits & Perks"], "section": "Home Office Set-up"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "¿Cuándo son las evaluaciones de desempeño?" },
+        { "role": "assistant", "content": "A los 3, 6 y 12 meses, y después una vez al año [1]." }
+      ],
+      "question": "¿Y qué niveles de carrera hay?",
+      "expected": ["Making a Career"], "section": "Mastery & Titles"
+    },
+    {
+      "history": [
+        { "role": "user", "content": "How many vacation days do I get per year?" },
+        { "role": "assistant", "content": "You get 20 days of vacation and personal days plus 11 local holidays every year [1]." }
+      ],
+      "question": "Who won the World Cup in 2022?",
+      "expected": []
+    }
+  ]
+}

@@ -15,7 +15,13 @@ internal static class EvalReport
     {
         var answerable = results.Count(r => r.Case.Answerable);
         Line(output, $"Dataset '{dataset.Name}': {answerable} answerable and {results.Count - answerable} unanswerable questions, top {top} chunks.");
-        Line(output, $"Retrieval took {elapsed.TotalMilliseconds / Math.Max(1, results.Count):F0} ms per question on average.");
+        var followUps = results.Where(r => r.Case.History is { Count: > 0 }).ToList();
+        if (followUps.Count > 0)
+        {
+            Line(output, $"{followUps.Count} follow-ups, {followUps.Count(r => r.SearchedQuestion is not null)} rewritten into standalone questions.");
+        }
+
+        Line(output, $"Each question took {elapsed.TotalMilliseconds / Math.Max(1, results.Count):F0} ms on average (retrieval, plus the rewrite for follow-ups).");
         output.WriteLine();
 
         Line(output, $"{"MinScore",9} {"Hit@1",7} {"Hit@3",7} {$"Hit@{top}",7} {"MRR",6} {"Rejected",9} {"Chunks",7}");
@@ -55,6 +61,11 @@ internal static class EvalReport
             var where = miss.Case.Answerable ? rank is { } n ? $"found at #{n}" : "not found" : "not rejected";
             output.WriteLine();
             Line(output, $"  Q: {miss.Case.Question}");
+            if (miss.SearchedQuestion is { } searched)
+            {
+                Line(output, $"     searched as: {searched}");
+            }
+
             Line(output, $"     expected {expected}, {where}");
             foreach (var (chunk, i) in miss.Retrieved.Take(3).Select((c, i) => (c, i)))
             {

@@ -11,6 +11,7 @@ internal sealed class EvalOptions
         ["--dataset"] = $"{SectionName}:{nameof(Dataset)}",
         ["--email"] = $"{SectionName}:{nameof(Email)}",
         ["--top"] = $"{SectionName}:{nameof(Top)}",
+        ["--rewrite"] = $"{SectionName}:{nameof(Rewrite)}",
     };
 
     /// <summary>Dataset file; relative paths are tried against the current directory, then the tool's output directory.</summary>
@@ -24,6 +25,12 @@ internal sealed class EvalOptions
     /// <summary>Chunks retrieved per question; defaults to <c>Rag:TopK</c>, i.e. what the answer model sees.</summary>
     [Range(1, 50)]
     public int? Top { get; set; }
+
+    /// <summary>
+    /// Rewrite follow-ups into standalone questions with the chat model, as the chat endpoint does. False searches
+    /// the follow-up as typed, for a baseline. Cases without history never call the model.
+    /// </summary>
+    public bool Rewrite { get; set; } = true;
 
     /// <summary>Score cut-offs to report besides the configured <c>Rag:MinScore</c>.</summary>
     public IReadOnlyList<double> Thresholds { get; set; } = [0.0, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7];

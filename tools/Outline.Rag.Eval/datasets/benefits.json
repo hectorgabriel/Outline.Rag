@@ -1,0 +1,48 @@
+{
+  "name": "Benefits & Perks sections (demo wiki)",
+  "cases": [
+    { "question": "When is open enrollment for health insurance?", "expected": ["Benefits & Perks"], "section": "Health Insurance" },
+    { "question": "Where can I find the full details of our insurance policies?", "expected": ["Benefits & Perks"], "section": "Health Insurance" },
+    { "question": "Which provider do we use for medical insurance?", "expected": ["Benefits & Perks"], "section": "Medical Insurance" },
+    { "question": "How much is deducted from my paycheck for family medical coverage?", "expected": ["Benefits & Perks"], "section": "Medical Insurance" },
+    { "question": "Does my medical plan cover my domestic partner?", "expected": ["Benefits & Perks"], "section": "Medical Insurance" },
+    { "question": "What happens to my medical coverage if I resign?", "expected": ["Benefits & Perks"], "section": "Medical Insurance" },
+    { "question": "I work from Europe and pay for private health insurance. Can I get reimbursed?", "expected": ["Benefits & Perks"], "section": "Health Insurance for Staff Outside the US" },
+    { "question": "¿Cuánto paga la empresa del seguro médico?", "expected": ["Benefits & Perks"], "section": "Medical Insurance" },
+    { "question": "Vivo fuera de Estados Unidos, ¿me reembolsan el seguro de salud?", "expected": ["Benefits & Perks"], "section": "Health Insurance for Staff Outside the US" },
+
+    { "question": "Who provides our dental insurance?", "expected": ["Benefits & Perks"], "section": "Dental Insurance" },
+    { "question": "Do I pay anything for dental coverage?", "expected": ["Benefits & Perks"], "section": "Dental Insurance" },
+    { "question": "Is my visit to the dentist covered from my first day?", "expected": ["Benefits & Perks"], "section": "Dental Insurance" },
+    { "question": "¿Tenemos seguro dental?", "expected": ["Benefits & Perks"], "section": "Dental Insurance" },
+    { "question": "Do we have dental insurance for employees in Canada?", "expected": ["Benefits & Perks"], "section": "Health Insurance" },
+
+    { "question": "Is there insurance for glasses and eye exams?", "expected": ["Benefits & Perks"], "section": "Vision Insurance" },
+    { "question": "Who provides our vision insurance?", "expected": ["Benefits & Perks"], "section": "Vision Insurance" },
+    { "question": "Does the company pay the whole vision premium?", "expected": ["Benefits & Perks"], "section": "Vision Insurance" },
+    { "question": "¿El seguro cubre lentes y exámenes de la vista?", "expected": ["Benefits & Perks"], "section": "Vision Insurance" },
+
+    { "question": "Do we work four-day weeks in the summer?", "expected": ["Benefits & Perks"], "section": "Summer Hours" },
+    { "question": "What if a public holiday falls during summer hours?", "expected": ["Benefits & Perks"], "section": "Summer Hours" },
+    { "question": "As a new hire, do I get summer hours right away?", "expected": ["Benefits & Perks"], "section": "Summer Hours" },
+    { "question": "When does the summer schedule start and end?", "expected": ["Benefits & Perks"], "section": "Summer Hours" },
+    { "question": "¿Trabajamos cuatro días a la semana en verano?", "expected": ["Benefits & Perks"], "section": "Summer Hours" },
+
+    { "question": "How do I request time off?", "expected": ["Benefits & Perks"], "section": "Scheduling Time Off" },
+    { "question": "Is there a form or approval process for vacation requests?", "expected": ["Benefits & Perks"], "section": "Scheduling Time Off" },
+    { "question": "How far ahead should I tell my team about a long vacation?", "expected": ["Benefits & Perks"], "section": "Scheduling Time Off" },
+    { "question": "Who do I need to inform before taking days off?", "expected": ["Benefits & Perks"], "section": "Scheduling Time Off" },
+    { "question": "¿Cómo pido vacaciones?", "expected": ["Benefits & Perks"], "section": "Scheduling Time Off" },
+
+    { "question": "How long is paternity leave for the secondary caregiver?", "expected": ["Benefits & Perks"], "section": "Family Leave" },
+    { "question": "Is parental leave paid at full salary?", "expected": ["Benefits & Perks"], "section": "Family Leave" },
+    { "question": "Does adopting a child qualify for parental leave?", "expected": ["Benefits & Perks"], "section": "Family Leave" },
+    { "question": "Until when can I use my parental leave after the birth?", "expected": ["Benefits & Perks"], "section": "Family Leave" },
+    { "question": "Can I take extra unpaid leave after my paid parental leave ends?", "expected": ["Benefits & Perks"], "section": "Family Leave" },
+    { "question": "¿Cuántas semanas de licencia de maternidad me corresponden?", "expected": ["Benefits & Perks"], "section": "Family Leave" },
+    { "question": "What extra family leave benefits does New Jersey provide?", "expected": ["State Medical and Family Leave Provisions"], "section": "New Jersey" },
+
+    { "question": "Is there a gym membership benefit?", "expected": [] },
+    { "question": "Do we get a free lunch at the office?", "expected": [] }
+  ]
+}

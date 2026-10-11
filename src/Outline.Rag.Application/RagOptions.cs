@@ -10,9 +10,12 @@ public sealed class RagOptions
     [Range(1, 50)]
     public int TopK { get; set; } = 6;
 
-    /// <summary>Chunks scoring below this cosine similarity are discarded.</summary>
+    /// <summary>
+    /// Chunks scoring below this cosine similarity are discarded. Tuned for bge-m3 with tools/Outline.Rag.Eval:
+    /// 0.3 kept everything, even off-topic questions; above 0.5 real answers start to drop out.
+    /// </summary>
     [Range(0.0, 1.0)]
-    public double MinScore { get; set; } = 0.3;
+    public double MinScore { get; set; } = 0.5;
 
     [Range(64, 8192)]
     public int MaxChunkTokens { get; set; } = 512;

@@ -11,9 +11,10 @@ using Outline.Rag.Application.Answering;
 using Outline.Rag.Application.Retrieval;
 using Outline.Rag.Eval;
 using Outline.Rag.Infrastructure;
+using Outline.Rag.Infrastructure.AI;
 
 // Measures retrieval against a dataset of questions with known source documents:
-//   dotnet run --project tools/Outline.Rag.Eval -- --email admin@example.com [--dataset path.json] [--top 10] [--rewrite false]
+//   dotnet run --project tools/Outline.Rag.Eval -- --email admin@example.com [--dataset path.json] [--top 10] [--rewrite false] [--reranker None|LlamaCpp]
 // Needs the RAG database already indexed by the Worker. Answers are not generated; the chat model is only called to
 // rewrite follow-up questions (cases with a history), as the chat endpoint does.
 var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
@@ -23,11 +24,16 @@ var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
 });
 builder.Configuration.AddCommandLine(args, EvalOptions.SwitchMappings);
 
-// Retrieve without a cut-off, so every threshold can be scored from one pass; the configured one is reported first.
-var configuredMinScore = builder.Configuration.GetValue("Rag:MinScore", new RagOptions().MinScore);
+// Retrieve without a cut-off, so every threshold can be scored from one pass; the configured one is marked. With a
+// reranker, the cut-off that applies is Rag:RerankMinScore, over reranker scores.
+var reranking = builder.Configuration.GetValue<RerankerProvider>("AI:Reranker:Provider") != RerankerProvider.None;
+var configuredMinScore = reranking
+    ? builder.Configuration.GetValue("Rag:RerankMinScore", new RagOptions().RerankMinScore)
+    : builder.Configuration.GetValue("Rag:MinScore", new RagOptions().MinScore);
 builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
 {
     ["Rag:MinScore"] = "0",
+    ["Rag:RerankMinScore"] = "0",
     ["Logging:LogLevel:Default"] = "Warning",
     ["Logging:LogLevel:Microsoft.Extensions.AI"] = "Warning",
 });
@@ -72,7 +78,7 @@ foreach (var evalCase in dataset.Cases)
 
 elapsed.Stop();
 
-EvalReport.Write(Console.Out, dataset, results, top, configuredMinScore, options.Thresholds, elapsed.Elapsed);
+EvalReport.Write(Console.Out, dataset, results, top, reranking, configuredMinScore, options.Thresholds, elapsed.Elapsed);
 return 0;
 
 static async Task<EvalDataset> LoadDatasetAsync(string path)

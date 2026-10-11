@@ -17,6 +17,20 @@ public sealed class RagOptions
     [Range(0.0, 1.0)]
     public double MinScore { get; set; } = 0.5;
 
+    /// <summary>
+    /// With a reranker configured: how many vector-search candidates it reorders before the best
+    /// <see cref="TopK"/> are kept. More finds answers ranked lower by embeddings, at the cost of reranking time.
+    /// </summary>
+    [Range(1, 200)]
+    public int RerankCandidates { get; set; } = 30;
+
+    /// <summary>
+    /// With a reranker configured, this replaces <see cref="MinScore"/>: candidates whose reranker score (0-1) is
+    /// below it are discarded. The two are on different scales, so each is tuned separately with tools/Outline.Rag.Eval.
+    /// </summary>
+    [Range(0.0, 1.0)]
+    public double RerankMinScore { get; set; } = 0.1;
+
     [Range(64, 8192)]
     public int MaxChunkTokens { get; set; } = 512;
 

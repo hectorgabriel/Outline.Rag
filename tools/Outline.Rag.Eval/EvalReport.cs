@@ -9,12 +9,16 @@ internal static class EvalReport
         EvalDataset dataset,
         IReadOnlyList<CaseResult> results,
         int top,
+        bool reranking,
         double configuredMinScore,
         IEnumerable<double> thresholds,
         TimeSpan elapsed)
     {
         var answerable = results.Count(r => r.Case.Answerable);
         Line(output, $"Dataset '{dataset.Name}': {answerable} answerable and {results.Count - answerable} unanswerable questions, top {top} chunks.");
+        output.WriteLine(reranking
+            ? "Reranker on: scores and MinScore below are reranker scores (Rag:RerankMinScore)."
+            : "Reranker off: scores and MinScore below are vector similarities (Rag:MinScore).");
         var followUps = results.Where(r => r.Case.History is { Count: > 0 }).ToList();
         if (followUps.Count > 0)
         {

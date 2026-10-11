@@ -12,6 +12,7 @@ internal sealed class EvalOptions
         ["--email"] = $"{SectionName}:{nameof(Email)}",
         ["--top"] = $"{SectionName}:{nameof(Top)}",
         ["--rewrite"] = $"{SectionName}:{nameof(Rewrite)}",
+        ["--reranker"] = "AI:Reranker:Provider",
     };
 
     /// <summary>Dataset file; relative paths are tried against the current directory, then the tool's output directory.</summary>
@@ -32,6 +33,7 @@ internal sealed class EvalOptions
     /// </summary>
     public bool Rewrite { get; set; } = true;
 
-    /// <summary>Score cut-offs to report besides the configured <c>Rag:MinScore</c>.</summary>
-    public IReadOnlyList<double> Thresholds { get; set; } = [0.0, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7];
+    /// <summary>Score cut-offs to report besides the configured one.</summary>
+    /// <remarks>The low values are for reranker scores, which spread over 0-1 unlike cosine similarities.</remarks>
+    public IReadOnlyList<double> Thresholds { get; set; } = [0.0, 0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7];
 }

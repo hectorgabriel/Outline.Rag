@@ -69,8 +69,27 @@ public static class DependencyInjection
             sp.GetRequiredService<NpgsqlIndexedDocumentStore>()));
 
         services.AddAiProviders();
+        if (configuration.GetValue<RerankerProvider>($"{AiOptions.SectionName}:Reranker:Provider") == RerankerProvider.LlamaCpp)
+        {
+            // Without this registration RetrievalService gets no IReranker and ranks by vector similarity alone.
+            services.AddHttpClient<IReranker, LlamaCppReranker>((sp, http) =>
+            {
+                var reranker = sp.GetRequiredService<IOptions<AiOptions>>().Value.Reranker;
+                http.BaseAddress = WithTrailingSlash(reranker.Endpoint);
+                http.Timeout = reranker.Timeout;
+                if (!string.IsNullOrEmpty(reranker.ApiKey))
+                {
+                    http.DefaultRequestHeaders.Authorization = new("Bearer", reranker.ApiKey);
+                }
+            });
+        }
+
         return services;
     }
+
+    /// <summary>Relative paths such as "v1/rerank" would replace the last segment of a base path without it.</summary>
+    private static Uri WithTrailingSlash(Uri uri) =>
+        uri.AbsoluteUri.EndsWith('/') ? uri : new Uri(uri.AbsoluteUri + "/");
 
     private static void ConfigureOutlineClient(IServiceProvider sp, HttpClient http)
     {

@@ -11,6 +11,35 @@ public sealed class AiOptions
 
     [Required]
     public EmbeddingModelOptions Embeddings { get; set; } = new();
+
+    [Required]
+    public RerankerOptions Reranker { get; set; } = new();
+}
+
+public enum RerankerProvider
+{
+    /// <summary>No reranking: the vector search order and <c>Rag:MinScore</c> decide.</summary>
+    None,
+
+    /// <summary>A llama.cpp <c>llama-server --rerank</c> (Jina/Cohere-style <c>/v1/rerank</c>).</summary>
+    LlamaCpp,
+}
+
+public sealed class RerankerOptions
+{
+    public RerankerProvider Provider { get; set; } = RerankerProvider.None;
+
+    /// <summary>Reported to the server; llama-server serves the model it was started with whatever this says.</summary>
+    public string Model { get; set; } = "bge-reranker-v2-m3";
+
+    public Uri Endpoint { get; set; } = new("http://localhost:8081");
+
+    /// <summary>Optional Bearer token: llama-server's <c>--api-key</c>, or an auth gate in front of it.</summary>
+    public string? ApiKey { get; set; }
+
+    /// <summary>One rerank call per question; past this, search falls back to the vector order.</summary>
+    [Range(typeof(TimeSpan), "00:00:01", "00:05:00")]
+    public TimeSpan Timeout { get; set; } = TimeSpan.FromSeconds(30);
 }
 
 public enum ChatProvider

@@ -104,6 +104,8 @@ public sealed class AnswerService(RetrievalService retrieval, QuestionRewriter r
         new(ChatRole.User, BuildUserPrompt(question, retrieved)),
     ];
 
+    private static readonly string[] ExcerptTags = ["excerpt", "excerpts"];
+
     internal static string BuildUserPrompt(string question, IReadOnlyList<RetrievedChunk> retrieved)
     {
         var sb = new StringBuilder();
@@ -111,8 +113,9 @@ public sealed class AnswerService(RetrievalService retrieval, QuestionRewriter r
         for (var i = 0; i < retrieved.Count; i++)
         {
             var chunk = retrieved[i].Chunk;
-            sb.AppendLine(CultureInfo.InvariantCulture, $"<excerpt number=\"{i + 1}\" title=\"{chunk.Title}\" section=\"{chunk.HeadingPath}\">");
-            sb.AppendLine(chunk.Content);
+            sb.AppendLine(CultureInfo.InvariantCulture,
+                $"<excerpt number=\"{i + 1}\" title=\"{PromptMarkup.Attribute(chunk.Title)}\" section=\"{PromptMarkup.Attribute(chunk.HeadingPath)}\">");
+            sb.AppendLine(PromptMarkup.Body(chunk.Content, ExcerptTags));
             sb.AppendLine("</excerpt>");
         }
 

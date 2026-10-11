@@ -65,7 +65,7 @@ Design constraints to keep:
 - **Changing the embedding model or dimension requires a new `VectorStore:CollectionName`** (a new table) and a full re-sync. To trigger one, clear `rag_sync_state` (keep `rag_documents` consistent with the table, or clear both).
 - **Search is scoped to what the caller can read in Outline, and fails closed.** An empty collection list means "no access", never "no filter": `RetrievalService` and `PgVectorChunkIndex` both return nothing for it. Keep that when adding callers. Permissions are modelled per collection (default permission for non-guests, direct and group memberships); documents shared individually inside a private collection are not, so they stay hidden from people who only have the share.
 - **Don't use `AddValidation()`.** Its generated validator walks every reachable type and throws on the `JsonElement` in `ChatCompletionMessage`, which breaks every chat request. Add `ValidateRequest<T>` to an endpoint instead.
-- **Retrieved text is untrusted data.** The system prompt in `AnswerService` wraps excerpts as data; keep it that way when changing prompts.
+- **Retrieved text is untrusted data.** Anyone who can edit a wiki page controls it. `AnswerService` wraps excerpts (and `QuestionRewriter` the conversation, which quotes them) in tags marked as data; put every untrusted value through `PromptMarkup` (`Attribute` for attribute values, `Body` with the wrapper's tag names for text) so it can't close the wrapper. Keep that when changing or adding prompts.
 
 ## Outline data source
 

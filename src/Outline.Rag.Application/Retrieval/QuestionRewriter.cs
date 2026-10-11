@@ -65,6 +65,8 @@ public sealed class QuestionRewriter(IChatClient chatClient)
             : question;
     }
 
+    private static readonly string[] ConversationTags = ["conversation", "user", "assistant"];
+
     internal static string BuildPrompt(IReadOnlyList<ChatMessage> history, string question)
     {
         var sb = new StringBuilder("<conversation>\n");
@@ -76,7 +78,10 @@ public sealed class QuestionRewriter(IChatClient chatClient)
                 text = text[..MaxHistoryMessageLength] + " …";
             }
 
-            sb.Append('<').Append(message.Role.Value).Append(">\n").Append(text).Append("\n</").Append(message.Role.Value).Append(">\n");
+            // Earlier answers quote wiki text, so they must not be able to close these tags either.
+            var role = message.Role == ChatRole.User ? "user" : "assistant";
+            sb.Append('<').Append(role).Append(">\n").Append(PromptMarkup.Body(text, ConversationTags))
+                .Append("\n</").Append(role).Append(">\n");
         }
 
         sb.Append("</conversation>\n\nLast message: ").Append(question.Trim());

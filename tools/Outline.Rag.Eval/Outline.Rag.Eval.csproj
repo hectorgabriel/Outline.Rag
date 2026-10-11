@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- Same store as the Api and Worker, so Outline:ApiToken and the AI settings are shared. -->
+    <UserSecretsId>dotnet-Outline.Rag.Worker-2e89f020-4959-4aa4-8946-fc55693ec703</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Outline.Rag.Infrastructure\Outline.Rag.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Reuse the Worker's settings (connection string, Outline URL, AI providers) instead of duplicating them. -->
+    <Content Include="..\..\src\Outline.Rag.Worker\appsettings*.json" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="datasets\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Outline.Rag.UnitTests" />
+  </ItemGroup>
+</Project>

@@ -9,4 +9,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Outline.Rag.UnitTests/Outline.Rag.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Outline.Rag.Eval/Outline.Rag.Eval.csproj" />
+  </Folder>
 </Solution>

@@ -25,6 +25,7 @@ ollama pull bge-m3                                               # native Ollama
 docker/outline-demo/seed.sh --set-user-secrets                   # disposable Outline on :3000 with sample docs
 dotnet run --project src/Outline.Rag.Worker                # periodic Outline → index sync
 dotnet run --project src/Outline.Rag.Api                   # http://localhost:5157, /openapi/v1.json in Development
+dotnet run --project tools/Outline.Rag.Eval -- --email admin@example.com   # retrieval hit@k/MRR per MinScore (needs an indexed DB)
 ```
 
 Configuration the scaffold leaves empty: `Outline:ApiToken` (an **admin** account's key, because Outline only shows user emails to admins), `Outline:WebhookSigningSecret`, the caller authentication (`Auth:Oidc:Authority`/`Audience` and/or `Auth:Gateway:ApiKey`) and, for the Anthropic chat provider, `ANTHROPIC_API_KEY` (or `AI:Chat:ApiKey`). Keep them in user secrets or environment variables, never in `appsettings*.json`. With no `Auth` configured, every search and chat request gets 401.
@@ -56,6 +57,7 @@ Clean-architecture layers. The dependency direction is Api/Worker → Infrastruc
 - **Worker:** `OutlineSyncWorker` initializes the RAG tables, then runs `SyncChangedAsync` on a `PeriodicTimer`. Its first run indexes everything.
 - **Api:** minimal APIs `POST /api/search`, `POST /api/ask` and `POST /webhooks/outline`, plus an OpenAI-compatible `/v1/models` and `/v1/chat/completions` (`OpenAiChatEndpoints`, streaming via `AnswerService.AskStreamingAsync`) for Open WebUI (compose profile `ui`, :8080). It answers only the last user message. The webhook verifies the `Outline-Signature` header, pushes the document id onto `ReindexChannel` and returns 202; `ReindexBackgroundService` drains the channel.
   - `Security/`: every endpoint requires a caller with an email unless it opts out with `AllowAnonymous` (only `/health`, the webhook and dev OpenAPI do). Callers authenticate with an OIDC JWT, or through a trusted gateway (Open WebUI: `Authorization: Bearer <Auth:Gateway:ApiKey>` plus `X-OpenWebUI-User-Email`). `CallerCollections` maps the email to the collections that user can read in Outline (`OutlineCollectionAccessResolver`, rules in `CollectionAccessRules`, cached for `Outline:AccessCacheDuration`). Requests are validated per endpoint (`ValidateRequest<T>`, limits in `RequestLimits`) and rate-limited per caller (`RateLimits`).
+- **Eval** (`tools/Outline.Rag.Eval`): runs a dataset (`datasets/handbook.json`: question, expected document titles, optional section) through `RetrievalService` as one Outline user, with `MinScore` forced to 0 so a single pass scores every cut-off. Run it before and after any retrieval or chunking change. The handbook set is easy at document level; section-level cases and unanswerable questions are what move.
 
 Design constraints to keep:
 - **Read Outline through its API, never its database.** The RAG index lives in its own database (`outline_rag`), separate from Outline's.

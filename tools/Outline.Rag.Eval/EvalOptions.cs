@@ -1,0 +1,30 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace Outline.Rag.Eval;
+
+internal sealed class EvalOptions
+{
+    public const string SectionName = "Eval";
+
+    public static readonly Dictionary<string, string> SwitchMappings = new(StringComparer.Ordinal)
+    {
+        ["--dataset"] = $"{SectionName}:{nameof(Dataset)}",
+        ["--email"] = $"{SectionName}:{nameof(Email)}",
+        ["--top"] = $"{SectionName}:{nameof(Top)}",
+    };
+
+    /// <summary>Dataset file; relative paths are tried against the current directory, then the tool's output directory.</summary>
+    [Required]
+    public string Dataset { get; set; } = "datasets/handbook.json";
+
+    /// <summary>Outline user to evaluate as: retrieval is scoped to the collections this person can read.</summary>
+    [Required, EmailAddress]
+    public string Email { get; set; } = "";
+
+    /// <summary>Chunks retrieved per question; defaults to <c>Rag:TopK</c>, i.e. what the answer model sees.</summary>
+    [Range(1, 50)]
+    public int? Top { get; set; }
+
+    /// <summary>Score cut-offs to report besides the configured <c>Rag:MinScore</c>.</summary>
+    public IReadOnlyList<double> Thresholds { get; set; } = [0.0, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7];
+}
